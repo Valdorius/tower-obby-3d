@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Башня Обби 3D (Tower of Obby)</title>
-  <link rel="stylesheet" href="style.css?v=2.5">
+  <link rel="stylesheet" href="style.css?v=2.6">
   <!-- Three.js 3D Engine -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <!-- Playgama Bridge SDK -->
@@ -53,6 +53,19 @@
 
     <!-- Toast Notification for Floor Advancement -->
     <div id="floor-toast">ЭТАЖ 1: ПЕРВЫЕ ШАГИ</div>
+
+    <!-- Portrait Mode Advisory -->
+    <div id="rotate-device-hint" class="rotate-device-hint">
+      <div class="rotate-content">
+        <span class="rotate-icon">🔄</span>
+        <span>Поверните экран в альбомный режим</span>
+      </div>
+    </div>
+
+    <!-- Click to Fullscreen Landscape Badge -->
+    <div id="fs-prompt" class="fs-prompt" title="На весь экран (альбомный)">
+      <div class="fs-prompt-badge">⛶ Кликните для игры на весь экран (альбомный)</div>
+    </div>
 
     <!-- Desktop Key Hints -->
     <div id="desktop-hint">
@@ -108,6 +121,6 @@
   </div>
 
   <!-- Game Logic -->
-  <script src="game.js?v=2.5"></script>
+  <script src="game.js?v=2.6"></script>
 </body>
 </html>

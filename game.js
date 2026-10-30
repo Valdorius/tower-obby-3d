@@ -361,6 +361,7 @@
       this.isMouseDown = false;
       this.lastMouseX = 0;
       this.lastMouseY = 0;
+      this.manualExitedFullscreen = false;
 
       // World objects
       this.platforms = [];
@@ -430,12 +431,17 @@
       this.character = new CharacterRig();
       this.scene.add(this.character.group);
 
-      // Window resize
-      window.addEventListener('resize', () => {
-        this.camera.aspect = window.innerWidth / window.innerHeight;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-      });
+      // Window resize & orientation change
+      const onResize = () => {
+        this.handleResize();
+        setTimeout(() => this.handleResize(), 150);
+        setTimeout(() => this.handleResize(), 350);
+      };
+      window.addEventListener('resize', onResize);
+      window.addEventListener('orientationchange', onResize);
+      if (screen.orientation && screen.orientation.addEventListener) {
+        screen.orientation.addEventListener('change', onResize);
+      }
     }
 
     // --- LEVEL GENERATION (20 FLOORS IN STRICT DIFFICULTY PROGRESSION) ---
@@ -1025,11 +1031,24 @@
         this.keys[e.code] = false;
       });
 
+      // Helper: Clicking/tapping on the game enters fullscreen in landscape
+      const triggerFullscreenLandscape = () => {
+        this.sound.ensureContext();
+        if (!this.manualExitedFullscreen && !this.isFullscreen()) {
+          this.enterFullscreenLandscape();
+        }
+      };
+
       // Pointer Orbit (Mouse)
       this.canvas.addEventListener('mousedown', (e) => {
+        triggerFullscreenLandscape();
         this.isMouseDown = true;
         this.lastMouseX = e.clientX;
         this.lastMouseY = e.clientY;
+      });
+
+      this.canvas.addEventListener('click', () => {
+        triggerFullscreenLandscape();
       });
 
       window.addEventListener('mousemove', (e) => {
@@ -1060,6 +1079,7 @@
       this.canvas.addEventListener(
         'touchstart',
         (e) => {
+          triggerFullscreenLandscape();
           for (let i = 0; i < e.changedTouches.length; i++) {
             const t = e.changedTouches[i];
             if (t.clientX > window.innerWidth * 0.35 && touchCamId === null) {
@@ -1109,6 +1129,7 @@
       joyZone.addEventListener(
         'touchstart',
         (e) => {
+          triggerFullscreenLandscape();
           e.preventDefault();
           const t = e.changedTouches[0];
           joyTouchId = t.identifier;
@@ -1148,6 +1169,7 @@
       // Jump Button (Mobile)
       const jumpBtn = document.getElementById('m-jump-btn');
       jumpBtn.addEventListener('touchstart', (e) => {
+        triggerFullscreenLandscape();
         e.preventDefault();
         this.triggerJump();
       });
@@ -1155,6 +1177,7 @@
       // Respawn Button (Mobile)
       const respBtn = document.getElementById('m-respawn-btn');
       respBtn.addEventListener('touchstart', (e) => {
+        triggerFullscreenLandscape();
         e.preventDefault();
         this.respawn(this.currentFloor);
       });
@@ -1194,6 +1217,17 @@
       this.coinsDisplay = document.getElementById('coins-display');
       this.floorToast = document.getElementById('floor-toast');
 
+      // Fullscreen prompt badge
+      const fsPrompt = document.getElementById('fs-prompt');
+      if (fsPrompt) {
+        fsPrompt.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.manualExitedFullscreen = false;
+          this.sound.ensureContext();
+          this.enterFullscreenLandscape();
+        });
+      }
+
       // Fullscreen toggle button
       const fsBtn = document.getElementById('fullscreen-btn');
       if (fsBtn) {
@@ -1203,24 +1237,28 @@
       }
 
       const updateFsUI = () => {
-        const isFs = !!(
-          document.fullscreenElement ||
-          document.webkitFullscreenElement ||
-          document.mozFullScreenElement ||
-          document.msFullscreenElement
-        );
+        const isFs = this.isFullscreen();
         const icon = document.getElementById('fullscreen-icon');
         const text = document.getElementById('fullscreen-text');
         if (icon) icon.textContent = isFs ? '🗗' : '⛶';
         if (text) text.textContent = isFs ? 'Окно' : 'Экран';
 
-        setTimeout(() => {
-          if (this.camera && this.renderer) {
-            this.camera.aspect = window.innerWidth / window.innerHeight;
-            this.camera.updateProjectionMatrix();
-            this.renderer.setSize(window.innerWidth, window.innerHeight);
+        const fsPromptEl = document.getElementById('fs-prompt');
+        if (fsPromptEl) {
+          if (isFs) {
+            fsPromptEl.classList.add('hidden');
+          } else {
+            fsPromptEl.classList.remove('hidden');
           }
-        }, 120);
+        }
+
+        if (isFs) {
+          this.lockLandscape();
+        }
+
+        this.handleResize();
+        setTimeout(() => this.handleResize(), 150);
+        setTimeout(() => this.handleResize(), 350);
       };
 
       document.addEventListener('fullscreenchange', updateFsUI);
@@ -1258,39 +1296,122 @@
       });
     }
 
-    toggleFullscreen() {
+    isFullscreen() {
       const doc = document;
-      const el = document.documentElement;
-
-      const isFs = !!(
+      return !!(
         doc.fullscreenElement ||
         doc.webkitFullscreenElement ||
         doc.mozFullScreenElement ||
         doc.msFullscreenElement
       );
+    }
 
-      if (!isFs) {
+    async enterFullscreenLandscape() {
+      const doc = document;
+      const el = document.documentElement;
+
+      if (!this.isFullscreen()) {
         const req =
           el.requestFullscreen ||
           el.webkitRequestFullscreen ||
           el.mozRequestFullScreen ||
           el.msRequestFullscreen;
         if (req) {
-          req.call(el).catch((err) => {
+          try {
+            const p = req.call(el);
+            if (p && typeof p.then === 'function') {
+              p.catch((err) => {
+                console.warn('Fullscreen request rejected:', err);
+              });
+              await p.catch(() => {});
+            }
+          } catch (err) {
             console.warn('Fullscreen error:', err);
-          });
+          }
         }
+      }
+
+      await this.lockLandscape();
+      this.handleResize();
+      setTimeout(() => this.handleResize(), 150);
+      setTimeout(() => this.handleResize(), 350);
+    }
+
+    async lockLandscape() {
+      try {
+        if (screen.orientation && typeof screen.orientation.lock === 'function') {
+          await screen.orientation.lock('landscape').catch(() => {
+            return screen.orientation.lock('landscape-primary').catch(() => {});
+          });
+        } else if (screen.lockOrientation) {
+          screen.lockOrientation('landscape');
+        } else if (screen.mozLockOrientation) {
+          screen.mozLockOrientation('landscape');
+        } else if (screen.msLockOrientation) {
+          screen.msLockOrientation('landscape');
+        }
+      } catch (err) {
+        console.warn('Orientation lock notice:', err.message || err);
+      }
+    }
+
+    async exitFullscreen() {
+      const doc = document;
+      const exit =
+        doc.exitFullscreen ||
+        doc.webkitExitFullscreen ||
+        doc.mozCancelFullScreen ||
+        doc.msExitFullscreen;
+      if (exit) {
+        try {
+          const p = exit.call(doc);
+          if (p && typeof p.then === 'function') {
+            await p.catch(() => {});
+          }
+        } catch (err) {
+          console.warn('Exit fullscreen error:', err);
+        }
+      }
+
+      this.unlockOrientation();
+      this.handleResize();
+      setTimeout(() => this.handleResize(), 150);
+      setTimeout(() => this.handleResize(), 350);
+    }
+
+    unlockOrientation() {
+      try {
+        if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+          screen.orientation.unlock();
+        } else if (screen.unlockOrientation) {
+          screen.unlockOrientation();
+        } else if (screen.mozUnlockOrientation) {
+          screen.mozUnlockOrientation();
+        } else if (screen.msUnlockOrientation) {
+          screen.msUnlockOrientation();
+        }
+      } catch (err) {
+        console.warn('Orientation unlock notice:', err.message || err);
+      }
+    }
+
+    handleResize() {
+      if (this.camera && this.renderer) {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        this.camera.aspect = w / h;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(w, h);
+      }
+    }
+
+    toggleFullscreen() {
+      if (!this.isFullscreen()) {
+        this.manualExitedFullscreen = false;
+        this.enterFullscreenLandscape();
       } else {
-        const exit =
-          doc.exitFullscreen ||
-          doc.webkitExitFullscreen ||
-          doc.mozCancelFullScreen ||
-          doc.msExitFullscreen;
-        if (exit) {
-          exit.call(doc).catch((err) => {
-            console.warn('Exit fullscreen error:', err);
-          });
-        }
+        this.manualExitedFullscreen = true;
+        this.exitFullscreen();
       }
     }
 
