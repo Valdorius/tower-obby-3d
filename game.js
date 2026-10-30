@@ -370,7 +370,8 @@
       this.vanishingBlocks = [];
       this.movingPlatforms = [];
       this.spinningBeams = [];
-      this.pulsingLasers = [];
+      this.laserFences = [];
+      this.pulsingLasers = this.laserFences;
       this.coinsObjects = [];
       this.checkpoints = [];
 
@@ -749,37 +750,37 @@
           }
 
           case 'lasers': {
-            // Platforms with pulsating lasers on EVERY platform
-            this.addPlatform(pos, new THREE.Vector3(2.8, 0.6, 2.8), 0x475569);
-            this.addPulsingLaser(pos.clone().add(new THREE.Vector3(0, 0.75, 0)), 2.6, 1.5, (i % 3) * 0.5);
+            // Full-fledged laser fence hurdle across EVERY platform
+            this.addPlatform(pos, new THREE.Vector3(3.0, 0.6, 3.0), 0x334155);
+            this.addLaserFence(pos, 2.7, 0.85, curAngle, 0, 0);
             break;
           }
 
           case 'fast_lasers': {
-            // Fast pulsating lasers on EVERY platform
-            this.addPlatform(pos, new THREE.Vector3(2.6, 0.6, 2.6), 0x334155);
-            this.addPulsingLaser(pos.clone().add(new THREE.Vector3(0, 0.75, 0)), 2.5, 0.9, (i % 2) * 0.45);
+            // Fast rhythmic laser fence hurdles on EVERY platform
+            this.addPlatform(pos, new THREE.Vector3(2.8, 0.6, 2.8), 0x1e293b);
+            this.addLaserFence(pos, 2.5, 0.92, curAngle, 1.2, (i % 3) * 0.4);
             break;
           }
 
           case 'spinner': {
-            // Rotating lethal beam on EVERY platform
-            this.addPlatform(pos, new THREE.Vector3(3.2, 0.6, 3.2), 0x334155);
-            this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.65, 0)), 3.4, 1.8);
+            // Rotating lethal beam on EVERY platform (shin height hurdle)
+            this.addPlatform(pos, new THREE.Vector3(3.4, 0.6, 3.4), 0x334155);
+            this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.52, 0)), 3.2, 1.6);
             break;
           }
 
           case 'fast_spinner': {
             // Fast rotating beam on EVERY platform
-            this.addPlatform(pos, new THREE.Vector3(3.0, 0.6, 3.0), 0x1e293b);
-            this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.65, 0)), 3.2, 2.6);
+            this.addPlatform(pos, new THREE.Vector3(3.2, 0.6, 3.2), 0x1e293b);
+            this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.52, 0)), 3.0, 2.2);
             break;
           }
 
           case 'vanishing_spinner': {
             // Disappearing platform + rotating beam on EVERY platform
-            this.addVanishingBlock(pos, new THREE.Vector3(3.0, 0.5, 3.0), 0xd97706, 0.9, 2400);
-            this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.65, 0)), 3.1, 2.2);
+            this.addVanishingBlock(pos, new THREE.Vector3(3.2, 0.5, 3.2), 0xd97706, 0.9, 2400);
+            this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.47, 0)), 3.0, 1.9);
             break;
           }
 
@@ -791,10 +792,10 @@
             else if (i === 4) this.addMovingPlatform(pos, new THREE.Vector3(2.5, 0.6, 2.5), 0xfacc15, curAngle, 2.4, 2.0);
             else if (i === 5) {
               this.addPlatform(pos, new THREE.Vector3(2.8, 0.6, 2.8), 0x334155);
-              this.addPulsingLaser(pos.clone().add(new THREE.Vector3(0, 0.75, 0)), 2.6, 1.1, 0);
+              this.addLaserFence(pos, 2.5, 0.90, curAngle, 1.3, 0);
             } else if (i === 6) {
-              this.addPlatform(pos, new THREE.Vector3(3.0, 0.6, 3.0), 0x334155);
-              this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.65, 0)), 3.2, 2.4);
+              this.addPlatform(pos, new THREE.Vector3(3.2, 0.6, 3.2), 0x334155);
+              this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.52, 0)), 3.0, 2.2);
             } else {
               // Super bounce catapulting onto Summit!
               this.addLaunchPad(pos, new THREE.Vector3(2.8, 0.6, 2.8), 24.0);
@@ -973,21 +974,63 @@
       });
     }
 
-    addSpinningBeam(pos, length, speed = 2.0) {
-      const geo = new THREE.CylinderGeometry(0.18, 0.18, length, 12);
-      const mat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.rotation.z = Math.PI / 2;
-      mesh.position.copy(pos);
-      this.scene.add(mesh);
+    addSpinningBeam(pos, length, speed = 1.8) {
+      const group = new THREE.Group();
+      group.position.copy(pos);
+      this.scene.add(group);
 
-      this.spinningBeams.push({
-        mesh,
+      // Central Hub / Base
+      const hubGeo = new THREE.CylinderGeometry(0.28, 0.32, 0.45, 16);
+      const hubMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        metalness: 0.85,
+        roughness: 0.25
+      });
+      const hub = new THREE.Mesh(hubGeo, hubMat);
+      hub.castShadow = true;
+      group.add(hub);
+
+      // Warning beacon light on hub
+      const lightGeo = new THREE.SphereGeometry(0.12, 12, 12);
+      const lightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const light = new THREE.Mesh(lightGeo, lightMat);
+      light.position.y = 0.26;
+      group.add(light);
+
+      // Rotating Hazard Bar along local X axis!
+      const barGeo = new THREE.BoxGeometry(length, 0.24, 0.24);
+      const barMat = new THREE.MeshStandardMaterial({
+        color: 0xef4444,
+        emissive: 0x991b1b,
+        metalness: 0.6,
+        roughness: 0.2
+      });
+      const barMesh = new THREE.Mesh(barGeo, barMat);
+      barMesh.castShadow = true;
+      group.add(barMesh);
+
+      // Glowing laser tip caps at ±length/2
+      const capGeo = new THREE.BoxGeometry(0.15, 0.28, 0.28);
+      const capMat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
+      const cap1 = new THREE.Mesh(capGeo, capMat);
+      cap1.position.set(-length / 2, 0, 0);
+      group.add(cap1);
+      const cap2 = new THREE.Mesh(capGeo, capMat);
+      cap2.position.set(length / 2, 0, 0);
+      group.add(cap2);
+
+      const initialAngle = Math.random() * Math.PI * 2;
+      group.rotation.y = initialAngle;
+
+      const beamObj = {
+        group,
         pos,
         length,
         speed,
-        angle: Math.random() * Math.PI
-      });
+        angle: initialAngle
+      };
+      this.spinningBeams.push(beamObj);
+      return beamObj;
     }
 
     addMovingPlatform(pos, size, colorHex, angleOffset, amplitude = 2.2, speed = 1.6) {
@@ -1002,21 +1045,97 @@
       });
     }
 
-    addPulsingLaser(pos, width, interval = 1.4, initialOffset = 0) {
-      const geo = new THREE.BoxGeometry(width, 0.2, 0.2);
-      const mat = new THREE.MeshBasicMaterial({ color: 0xff0055, transparent: true, opacity: 0.9 });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.copy(pos);
-      this.scene.add(mesh);
+    addLaserFence(pos, width, height = 0.9, angle = 0, interval = 0, initialOffset = 0) {
+      const group = new THREE.Group();
+      group.position.copy(pos);
+      group.rotation.y = angle;
+      this.scene.add(group);
 
-      this.pulsingLasers.push({
-        mesh,
+      // Platform top is at local Y = +0.3 (since platform is 0.6 thick centered at pos.y)
+      const floorY = 0.3;
+      const halfW = width / 2;
+
+      // 1. Sturdy Side Posts (Metallic emitter pillars)
+      const postRadius = 0.09;
+      const postGeo = new THREE.CylinderGeometry(postRadius, postRadius * 1.2, height, 16);
+      const postMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        metalness: 0.85,
+        roughness: 0.25
+      });
+
+      const leftPost = new THREE.Mesh(postGeo, postMat);
+      leftPost.position.set(-halfW + postRadius, floorY + height / 2, 0);
+      leftPost.castShadow = true;
+      group.add(leftPost);
+
+      const rightPost = new THREE.Mesh(postGeo, postMat);
+      rightPost.position.set(halfW - postRadius, floorY + height / 2, 0);
+      rightPost.castShadow = true;
+      group.add(rightPost);
+
+      // Glowing beacon caps on top of posts
+      const capGeo = new THREE.SphereGeometry(0.12, 14, 14);
+      const capMat = new THREE.MeshBasicMaterial({ color: 0xff007f });
+      const leftCap = new THREE.Mesh(capGeo, capMat);
+      leftCap.position.set(-halfW + postRadius, floorY + height + 0.04, 0);
+      group.add(leftCap);
+
+      const rightCap = new THREE.Mesh(capGeo, capMat);
+      rightCap.position.set(halfW - postRadius, floorY + height + 0.04, 0);
+      group.add(rightCap);
+
+      // 2. Horizontal Glowing Laser Rails (3 bars forming the fence barrier)
+      const beamSpan = width - postRadius * 4;
+      const railGeo = new THREE.BoxGeometry(beamSpan, 0.08, 0.08);
+      const laserMat = new THREE.MeshBasicMaterial({
+        color: 0xff0055,
+        transparent: true,
+        opacity: 0.95
+      });
+
+      const railMeshes = [];
+      const railHeights = [0.22, 0.55, 0.88];
+      for (let r = 0; r < railHeights.length; r++) {
+        const rail = new THREE.Mesh(railGeo, laserMat.clone());
+        rail.position.set(0, floorY + height * railHeights[r], 0);
+        group.add(rail);
+        railMeshes.push(rail);
+      }
+
+      // 3. Glowing Translucent Energy Grid Mesh between posts
+      const gridGeo = new THREE.PlaneGeometry(beamSpan, height * 0.88);
+      const gridMat = new THREE.MeshBasicMaterial({
+        color: 0xff0077,
+        transparent: true,
+        opacity: 0.35,
+        side: THREE.DoubleSide
+      });
+      const gridMesh = new THREE.Mesh(gridGeo, gridMat);
+      gridMesh.position.set(0, floorY + height * 0.55, 0);
+      group.add(gridMesh);
+
+      const fenceObj = {
+        group,
         pos,
         width,
-        state: 'on',
+        height,
+        angle,
+        floorY: pos.y + floorY,
+        topY: pos.y + floorY + height,
         interval,
-        timer: initialOffset
-      });
+        timer: initialOffset,
+        state: 'on',
+        railMeshes,
+        gridMesh,
+        capMat
+      };
+      this.laserFences.push(fenceObj);
+      return fenceObj;
+    }
+
+    addPulsingLaser(pos, width, interval = 1.4, initialOffset = 0, angle = 0) {
+      return this.addLaserFence(pos, width, 0.9, angle, interval, initialOffset);
     }
 
     // --- 5. INPUT & CONTROLS ---
@@ -1642,38 +1761,81 @@
         }
       }
 
-      // 10. Check Spinning Beams
+      // 10. Check Spinning Beams (Accurate Line Segment vs Player Cylinder)
       for (let i = 0; i < this.spinningBeams.length; i++) {
         const sb = this.spinningBeams[i];
-        const beamHalf = sb.length / 2;
+        // Vertical check: Beam is at sb.pos.y with thickness 0.24 (half-height 0.12)
+        const beamTop = sb.pos.y + 0.14;
+        const beamBottom = sb.pos.y - 0.14;
+
+        // Player feet are at playerPos.y, head at playerPos.y + 1.8
+        // If jumping over beam (feet above beam top):
+        if (this.playerPos.y >= beamTop - 0.04) {
+          continue; // Clean jump over the beam!
+        }
+        // If player is entirely below beam:
+        if (this.playerPos.y + 1.8 <= beamBottom) {
+          continue;
+        }
+
+        // Horizontal line segment check:
+        // sb.group.rotation.y = sb.angle.
+        // Bar lies along local X axis inside group:
+        const dirX = Math.cos(sb.angle);
+        const dirZ = -Math.sin(sb.angle);
+
         const dx = this.playerPos.x - sb.pos.x;
         const dz = this.playerPos.z - sb.pos.z;
-        const distToCenter = Math.sqrt(dx * dx + dz * dz);
-        if (distToCenter < beamHalf + 0.4 && Math.abs(this.playerPos.y + 0.9 - sb.pos.y) < 0.6) {
-          // Angle check
-          const beamAngle = sb.mesh.rotation.y;
-          const beamDirX = Math.cos(beamAngle);
-          const beamDirZ = Math.sin(beamAngle);
-          // Distance from point to line segment
-          const proj = dx * beamDirX + dz * beamDirZ;
-          const perpX = dx - proj * beamDirX;
-          const perpZ = dz - proj * beamDirZ;
-          const perpDist = Math.sqrt(perpX * perpX + perpZ * perpZ);
-          if (perpDist < 0.35 && Math.abs(proj) < beamHalf) {
-            this.onDeath();
-            return;
-          }
+
+        // Project player offset onto bar direction
+        const proj = dx * dirX + dz * dirZ;
+        const halfL = sb.length / 2;
+        const clampedProj = Math.max(-halfL, Math.min(halfL, proj));
+
+        // Closest point on the physical bar
+        const closeX = sb.pos.x + clampedProj * dirX;
+        const closeZ = sb.pos.z + clampedProj * dirZ;
+
+        const distX = this.playerPos.x - closeX;
+        const distZ = this.playerPos.z - closeZ;
+        const distSq = distX * distX + distZ * distZ;
+
+        // Hit radius: forgiving 0.38m
+        if (distSq < 0.38 * 0.38) {
+          this.onDeath();
+          return;
         }
       }
 
-      // 11. Check Pulsing Lasers
-      for (let i = 0; i < this.pulsingLasers.length; i++) {
-        const laser = this.pulsingLasers[i];
-        if (laser.state === 'on') {
-          const dx = Math.abs(this.playerPos.x - laser.pos.x);
-          const dy = Math.abs(this.playerPos.y + 0.9 - laser.pos.y);
-          const dz = Math.abs(this.playerPos.z - laser.pos.z);
-          if (dx < laser.width / 2 && dy < 0.4 && dz < 0.35) {
+      // 11. Check Laser Fences (Full-fledged Barrier Hurdles)
+      for (let i = 0; i < this.laserFences.length; i++) {
+        const lf = this.laserFences[i];
+        if (lf.state !== 'on') continue;
+
+        // Vertical clearance: can player jump over?
+        // If feet are above fence top:
+        if (this.playerPos.y >= lf.topY - 0.05) {
+          continue; // Successfully leaped over the hurdle!
+        }
+        // If player is below platform:
+        if (this.playerPos.y + 1.8 <= lf.floorY) {
+          continue;
+        }
+
+        // Horizontal distance relative to fence plane
+        const dx = this.playerPos.x - lf.pos.x;
+        const dz = this.playerPos.z - lf.pos.z;
+
+        // Distance along fence axis (local X):
+        const along = dx * Math.cos(lf.angle) + dz * Math.sin(lf.angle);
+        // Distance across fence plane (local Z):
+        const across = -dx * Math.sin(lf.angle) + dz * Math.cos(lf.angle);
+
+        const halfW = lf.width / 2;
+        // Check if player is between the fence posts
+        if (Math.abs(along) <= halfW + 0.15) {
+          // Check if player intersects the laser fence plane
+          if (Math.abs(across) < 0.38) {
             this.onDeath();
             return;
           }
@@ -1719,7 +1881,7 @@
       for (let i = 0; i < this.spinningBeams.length; i++) {
         const sb = this.spinningBeams[i];
         sb.angle += sb.speed * dt;
-        sb.mesh.rotation.y = sb.angle;
+        sb.group.rotation.y = sb.angle;
       }
 
       // Moving platforms
@@ -1776,16 +1938,29 @@
         }
       }
 
-      // Pulsing Lasers
-      for (let i = 0; i < this.pulsingLasers.length; i++) {
-        const laser = this.pulsingLasers[i];
-        laser.timer += dt;
-        const interval = laser.interval || 1.4;
-        if (laser.timer > interval) {
-          laser.timer = 0;
-          laser.state = laser.state === 'on' ? 'off' : 'on';
-          laser.mesh.material.color.setHex(laser.state === 'on' ? 0xff0055 : 0x1e293b);
-          laser.mesh.material.opacity = laser.state === 'on' ? 0.9 : 0.2;
+      // Laser fences update
+      for (let i = 0; i < this.laserFences.length; i++) {
+        const lf = this.laserFences[i];
+        if (lf.interval > 0) {
+          lf.timer += dt;
+          if (lf.timer > lf.interval) {
+            lf.timer = 0;
+            lf.state = lf.state === 'on' ? 'off' : 'on';
+            const isOn = lf.state === 'on';
+            for (let r = 0; r < lf.railMeshes.length; r++) {
+              lf.railMeshes[r].material.color.setHex(isOn ? 0xff0055 : 0x1e293b);
+              lf.railMeshes[r].material.opacity = isOn ? 0.95 : 0.15;
+            }
+            lf.gridMesh.visible = isOn;
+            lf.capMat.color.setHex(isOn ? 0xff007f : 0x475569);
+          }
+        } else {
+          // Continuous energetic glow pulsation
+          const glow = 0.82 + Math.sin(timeSec * 7 + i) * 0.18;
+          for (let r = 0; r < lf.railMeshes.length; r++) {
+            lf.railMeshes[r].material.opacity = glow;
+          }
+          lf.gridMesh.material.opacity = 0.25 + Math.sin(timeSec * 9 + i) * 0.12;
         }
       }
 
