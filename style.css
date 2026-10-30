@@ -147,80 +147,62 @@ html, body {
   transform: translateX(-50%) translateY(0);
 }
 
-/* Controls Hint (Desktop) */
-#desktop-hint {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(11, 15, 25, 0.7);
-  backdrop-filter: blur(6px);
-  padding: 8px 18px;
-  border-radius: 20px;
-  font-size: 13px;
-  color: #cbd5e1;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  gap: 16px;
-  pointer-events: none;
-}
-
-#desktop-hint span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.kbd {
-  background: #334155;
-  color: #f8fafc;
-  padding: 2px 7px;
-  border-radius: 5px;
-  font-weight: bold;
-  font-family: monospace;
-  box-shadow: 0 2px 0 #1e293b;
-}
-
 /* Mobile Controls Overlay */
 #mobile-controls {
   position: absolute;
-  bottom: 24px;
+  top: 0;
   left: 0;
   width: 100%;
-  display: flex;
-  justify-content: space-between;
-  padding: 0 30px;
+  height: 100%;
   pointer-events: none;
+  z-index: 20;
 }
 
+/* Floating Dynamic Virtual Joystick */
 #joystick-zone {
   width: 130px;
   height: 130px;
-  position: relative;
+  position: absolute;
+  left: 36px;
+  bottom: 36px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  pointer-events: auto;
-  touch-action: none;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, rgba(15, 23, 42, 0.4) 75%);
+  border: 2px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  opacity: 0.4;
+  transition: opacity 0.15s ease;
+  will-change: left, top, transform;
+}
+
+#joystick-zone.active {
+  opacity: 0.95;
+  border-color: rgba(56, 189, 248, 0.85);
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
 }
 
 #joystick-knob {
-  width: 54px;
-  height: 54px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #60a5fa, #2563eb);
+  background: radial-gradient(circle at 35% 35%, #38bdf8, #2563eb);
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.6);
   pointer-events: none;
+  will-change: transform;
 }
 
 .mobile-action-buttons {
+  position: absolute;
+  right: 28px;
+  bottom: 28px;
   display: flex;
   gap: 16px;
   align-items: flex-end;
+  pointer-events: auto;
 }
 
 .action-btn {
@@ -388,9 +370,6 @@ html, body {
 }
 
 @media (max-width: 768px) {
-  #desktop-hint {
-    display: none;
-  }
   .hud-pill {
     padding: 6px 10px;
     font-size: 13px;
@@ -416,13 +395,20 @@ html, body {
 }
 
 @media (max-width: 500px) {
-  #mobile-controls {
-    padding: 0 16px;
+  .mobile-action-buttons {
+    right: 18px;
     bottom: 18px;
+    gap: 12px;
   }
   #joystick-zone {
     width: 110px;
     height: 110px;
+    left: 20px;
+    bottom: 20px;
+  }
+  #joystick-knob {
+    width: 46px;
+    height: 46px;
   }
   .action-btn.jump-btn {
     width: 68px;
@@ -434,48 +420,6 @@ html, body {
     height: 52px;
     font-size: 16px;
   }
-}
-
-.fs-prompt {
-  position: absolute;
-  bottom: 74px;
-  left: 50%;
-  transform: translateX(-50%);
-  pointer-events: auto;
-  cursor: pointer;
-  z-index: 50;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.fs-prompt.hidden {
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-50%) translateY(20px);
-  display: none !important;
-}
-
-.fs-prompt-badge {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.92), rgba(14, 165, 233, 0.92));
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  padding: 10px 22px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  font-size: 14px;
-  font-weight: 700;
-  color: #ffffff;
-  box-shadow: 0 4px 20px rgba(14, 165, 233, 0.45);
-  animation: pulseBadge 2.2s infinite ease-in-out;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-@keyframes pulseBadge {
-  0%, 100% { transform: scale(1); box-shadow: 0 4px 20px rgba(14, 165, 233, 0.45); }
-  50% { transform: scale(1.04); box-shadow: 0 6px 26px rgba(14, 165, 233, 0.7); }
 }
 
 /* Portrait Mode Advisory */
@@ -520,9 +464,6 @@ html, body {
 @media screen and (orientation: portrait) and (max-width: 900px) {
   .rotate-device-hint {
     display: block;
-  }
-  .fs-prompt {
-    bottom: 24px;
   }
 }
 

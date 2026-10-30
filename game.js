@@ -1202,22 +1202,24 @@
         this.cameraDist = Math.max(3.2, Math.min(9.0, this.cameraDist + e.deltaY * 0.004));
       });
 
-      // Touch Orbit (Swipe screen to rotate camera/view)
+      // Touch Controls (Dynamic Floating Joystick on Left Half, Camera Orbit on Right Half)
       let touchCamId = null;
       let lastTouchX = 0;
       let lastTouchY = 0;
 
-      const isInteractiveUI = (el) => {
+      const joyZone = document.getElementById('joystick-zone');
+      const joyKnob = document.getElementById('joystick-knob');
+      let joyTouchId = null;
+      let joyCenter = { x: 0, y: 0 };
+
+      const isTopOrActionUI = (el) => {
         if (!el) return false;
         const node = el.nodeType === 3 ? el.parentElement : el;
         if (!node || typeof node.closest !== 'function') return false;
         return !!(
-          node.closest('#joystick-zone') ||
-          node.closest('.action-btn') ||
-          node.closest('.hud-btn') ||
+          node.closest('.top-header') ||
           node.closest('.modal-card') ||
-          node.closest('.fs-prompt') ||
-          node.closest('#fs-prompt')
+          node.closest('.action-btn')
         );
       };
 
@@ -1227,10 +1229,27 @@
           this.sound.ensureContext();
           for (let i = 0; i < e.changedTouches.length; i++) {
             const t = e.changedTouches[i];
-            if (touchCamId === null && !isInteractiveUI(t.target)) {
-              touchCamId = t.identifier;
-              lastTouchX = t.clientX;
-              lastTouchY = t.clientY;
+            if (isTopOrActionUI(t.target)) continue;
+
+            const isLeftHalf = t.clientX < window.innerWidth * 0.5;
+
+            if (isLeftHalf) {
+              if (joyTouchId === null && joyZone && joyKnob) {
+                joyTouchId = t.identifier;
+                joyCenter = { x: t.clientX, y: t.clientY };
+                const halfW = (joyZone.offsetWidth || 130) / 2;
+                joyZone.style.bottom = 'auto';
+                joyZone.style.left = (t.clientX - halfW) + 'px';
+                joyZone.style.top = (t.clientY - halfW) + 'px';
+                joyZone.classList.add('active');
+                this.updateJoystick(t.clientX, t.clientY, joyCenter, joyKnob, joyZone);
+              }
+            } else {
+              if (touchCamId === null) {
+                touchCamId = t.identifier;
+                lastTouchX = t.clientX;
+                lastTouchY = t.clientY;
+              }
             }
           }
         },
@@ -1242,7 +1261,10 @@
         (e) => {
           for (let i = 0; i < e.changedTouches.length; i++) {
             const t = e.changedTouches[i];
-            if (t.identifier === touchCamId) {
+            if (t.identifier === joyTouchId) {
+              if (e.cancelable) e.preventDefault();
+              this.updateJoystick(t.clientX, t.clientY, joyCenter, joyKnob, joyZone);
+            } else if (t.identifier === touchCamId) {
               const dx = t.clientX - lastTouchX;
               const dy = t.clientY - lastTouchY;
               lastTouchX = t.clientX;
@@ -1258,97 +1280,83 @@
         { passive: false }
       );
 
-      const endTouch = (e) => {
+      const handleTouchEnd = (e) => {
         for (let i = 0; i < e.changedTouches.length; i++) {
-          if (e.changedTouches[i].identifier === touchCamId) {
+          const t = e.changedTouches[i];
+          if (t.identifier === joyTouchId) {
+            joyTouchId = null;
+            this.joystick = { x: 0, y: 0, active: false };
+            if (joyKnob) joyKnob.style.transform = 'translate(-50%, -50%)';
+            if (joyZone) {
+              joyZone.classList.remove('active');
+              joyZone.style.bottom = '';
+              joyZone.style.left = '';
+              joyZone.style.top = '';
+            }
+          }
+          if (t.identifier === touchCamId) {
             touchCamId = null;
           }
         }
       };
-      window.addEventListener('touchend', endTouch, { passive: true });
-      window.addEventListener('touchcancel', endTouch, { passive: true });
-
-      // Virtual Joystick (Mobile)
-      const joyZone = document.getElementById('joystick-zone');
-      const joyKnob = document.getElementById('joystick-knob');
-      let joyTouchId = null;
-      let joyCenter = { x: 0, y: 0 };
-
-      joyZone.addEventListener(
-        'touchstart',
-        (e) => {
-          if (this.dismissFsPrompt) this.dismissFsPrompt();
-          this.sound.ensureContext();
-          if (e.cancelable) e.preventDefault();
-          const t = e.changedTouches[0];
-          joyTouchId = t.identifier;
-          const rect = joyZone.getBoundingClientRect();
-          joyCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-          this.updateJoystick(t.clientX, t.clientY, joyCenter, joyKnob);
-        },
-        { passive: false }
-      );
-
-      window.addEventListener(
-        'touchmove',
-        (e) => {
-          for (let i = 0; i < e.changedTouches.length; i++) {
-            const t = e.changedTouches[i];
-            if (t.identifier === joyTouchId) {
-              if (e.cancelable) e.preventDefault();
-              this.updateJoystick(t.clientX, t.clientY, joyCenter, joyKnob);
-            }
-          }
-        },
-        { passive: false }
-      );
-
-      const resetJoy = (e) => {
-        for (let i = 0; i < e.changedTouches.length; i++) {
-          if (e.changedTouches[i].identifier === joyTouchId) {
-            joyTouchId = null;
-            this.joystick = { x: 0, y: 0, active: false };
-            joyKnob.style.transform = 'translate(-50%, -50%)';
-          }
-        }
-      };
-      window.addEventListener('touchend', resetJoy, { passive: true });
-      window.addEventListener('touchcancel', resetJoy, { passive: true });
+      window.addEventListener('touchend', handleTouchEnd, { passive: true });
+      window.addEventListener('touchcancel', handleTouchEnd, { passive: true });
 
       // Jump Button (Mobile)
       const jumpBtn = document.getElementById('m-jump-btn');
-      jumpBtn.addEventListener('touchstart', (e) => {
-        if (this.dismissFsPrompt) this.dismissFsPrompt();
-        this.sound.ensureContext();
-        if (e.cancelable) e.preventDefault();
-        this.triggerJump();
-      });
+      if (jumpBtn) {
+        jumpBtn.addEventListener('touchstart', (e) => {
+          this.sound.ensureContext();
+          if (e.cancelable) e.preventDefault();
+          this.triggerJump();
+        });
+      }
 
       // Respawn Button (Mobile)
       const respBtn = document.getElementById('m-respawn-btn');
-      respBtn.addEventListener('touchstart', (e) => {
-        if (this.dismissFsPrompt) this.dismissFsPrompt();
-        this.sound.ensureContext();
-        if (e.cancelable) e.preventDefault();
-        this.respawn(this.currentFloor);
-      });
+      if (respBtn) {
+        respBtn.addEventListener('touchstart', (e) => {
+          this.sound.ensureContext();
+          if (e.cancelable) e.preventDefault();
+          this.respawn(this.currentFloor);
+        });
+      }
     }
 
-    updateJoystick(cx, cy, center, knobEl) {
+    updateJoystick(cx, cy, center, knobEl, zoneEl) {
       const maxDist = 48;
       let dx = cx - center.x;
       let dy = cy - center.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const dist = Math.hypot(dx, dy);
 
-      if (dist > maxDist) {
-        dx = (dx / dist) * maxDist;
-        dy = (dy / dist) * maxDist;
+      // Dynamic floating follow: if thumb drifts far, move center smoothly with thumb
+      if (dist > maxDist * 1.35) {
+        const pull = dist - maxDist * 1.35;
+        center.x += (dx / dist) * pull;
+        center.y += (dy / dist) * pull;
+        if (zoneEl) {
+          const halfW = (zoneEl.offsetWidth || 130) / 2;
+          zoneEl.style.bottom = 'auto';
+          zoneEl.style.left = (center.x - halfW) + 'px';
+          zoneEl.style.top = (center.y - halfW) + 'px';
+        }
+        dx = cx - center.x;
+        dy = cy - center.y;
       }
 
-      knobEl.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      let clampedDx = dx;
+      let clampedDy = dy;
+      if (dist > maxDist) {
+        clampedDx = (dx / dist) * maxDist;
+        clampedDy = (dy / dist) * maxDist;
+      }
+
+      if (knobEl) {
+        knobEl.style.transform = `translate(calc(-50% + ${clampedDx}px), calc(-50% + ${clampedDy}px))`;
+      }
       this.joystick = {
-        x: dx / maxDist,
-        y: dy / maxDist,
+        x: clampedDx / maxDist,
+        y: clampedDy / maxDist,
         active: true
       };
     }
@@ -1368,39 +1376,6 @@
       this.coinsDisplay = document.getElementById('coins-display');
       this.floorToast = document.getElementById('floor-toast');
 
-      // Fullscreen prompt badge
-      const fsPrompt = document.getElementById('fs-prompt');
-      let fsPromptDismissed = false;
-      const dismissFsPrompt = () => {
-        if (!fsPrompt || fsPromptDismissed) return;
-        fsPromptDismissed = true;
-        fsPrompt.classList.add('hidden');
-        setTimeout(() => {
-          if (fsPrompt) fsPrompt.style.display = 'none';
-        }, 300);
-      };
-      this.dismissFsPrompt = dismissFsPrompt;
-
-      if (fsPrompt) {
-        const handleFsPrompt = async (e) => {
-          if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-          }
-          dismissFsPrompt();
-          this.manualExitedFullscreen = false;
-          this.sound.ensureContext();
-          await this.enterFullscreenLandscape();
-        };
-
-        fsPrompt.addEventListener('click', handleFsPrompt);
-        fsPrompt.addEventListener('touchend', handleFsPrompt);
-        fsPrompt.addEventListener('pointerup', handleFsPrompt);
-
-        // Auto-dismiss prompt after 8 seconds or on first movement
-        setTimeout(() => dismissFsPrompt(), 8000);
-      }
-
       // Fullscreen toggle button in top header
       const fsBtn = document.getElementById('fullscreen-btn');
       if (fsBtn) {
@@ -1409,7 +1384,6 @@
             e.preventDefault();
             e.stopPropagation();
           }
-          dismissFsPrompt();
           this.sound.ensureContext();
           this.toggleFullscreen();
         };
@@ -1423,10 +1397,6 @@
         const text = document.getElementById('fullscreen-text');
         if (icon) icon.textContent = isFs ? '🗗' : '⛶';
         if (text) text.textContent = isFs ? 'Окно' : 'Экран';
-
-        if (fsPrompt && isFs) {
-          dismissFsPrompt();
-        }
 
         if (isFs) {
           this.lockLandscape();
