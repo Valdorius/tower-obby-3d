@@ -1140,7 +1140,7 @@
         pos,
         width,
         height,
-        angle,
+        angle: typeof forwardDir === 'number' ? forwardDir : 0,
         floorY: pos.y + floorY,
         topY: pos.y + floorY + height,
         interval,
@@ -2154,8 +2154,17 @@
     }
   }
 
-  // Launch once DOM is ready
-  window.addEventListener('DOMContentLoaded', () => {
-    window.game = new TowerGame();
-  });
+  // Launch game reliably whether DOMContentLoaded already fired or not
+  const launch = () => {
+    if (!window.game) {
+      window.game = new TowerGame();
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', launch);
+    window.addEventListener('load', launch);
+  } else {
+    launch();
+  }
 })();
