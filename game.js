@@ -432,16 +432,24 @@
       this.character = new CharacterRig();
       this.scene.add(this.character.group);
 
-      // Window resize & orientation change
+      // Window resize & orientation change across all browser APIs
       const onResize = () => {
-        this.handleResize();
-        setTimeout(() => this.handleResize(), 150);
-        setTimeout(() => this.handleResize(), 350);
+        this.triggerMultiPassResize();
       };
       window.addEventListener('resize', onResize);
-      window.addEventListener('orientationchange', onResize);
-      if (screen.orientation && screen.orientation.addEventListener) {
-        screen.orientation.addEventListener('change', onResize);
+      window.addEventListener('orientationchange', () => {
+        // Physical rotation of device: ensure orientation is unlocked so sensors read freely!
+        this.unlockOrientation();
+        this.triggerMultiPassResize();
+      });
+      if (window.screen && window.screen.orientation) {
+        if (typeof window.screen.orientation.addEventListener === 'function') {
+          window.screen.orientation.addEventListener('change', onResize);
+        }
+        window.screen.orientation.onchange = onResize;
+      }
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', onResize);
       }
     }
 
@@ -1161,24 +1169,16 @@
         this.keys[e.code] = false;
       });
 
-      // Helper: Clicking/tapping on the game enters fullscreen in landscape
-      const triggerFullscreenLandscape = () => {
-        this.sound.ensureContext();
-        if (!this.manualExitedFullscreen && !this.isFullscreen()) {
-          this.enterFullscreenLandscape();
-        }
-      };
-
       // Pointer Orbit (Mouse)
       this.canvas.addEventListener('mousedown', (e) => {
-        triggerFullscreenLandscape();
+        this.sound.ensureContext();
         this.isMouseDown = true;
         this.lastMouseX = e.clientX;
         this.lastMouseY = e.clientY;
       });
 
       this.canvas.addEventListener('click', () => {
-        triggerFullscreenLandscape();
+        this.sound.ensureContext();
       });
 
       window.addEventListener('mousemove', (e) => {
@@ -1201,18 +1201,29 @@
         this.cameraDist = Math.max(3.2, Math.min(9.0, this.cameraDist + e.deltaY * 0.004));
       });
 
-      // Touch Orbit on Canvas (Swipe right area)
+      // Touch Orbit (Swipe screen to rotate camera/view)
       let touchCamId = null;
       let lastTouchX = 0;
       let lastTouchY = 0;
 
-      this.canvas.addEventListener(
+      const isInteractiveUI = (el) => {
+        if (!el) return false;
+        return !!(
+          el.closest('#joystick-zone') ||
+          el.closest('.action-btn') ||
+          el.closest('.hud-btn') ||
+          el.closest('.modal-card') ||
+          el.closest('.fs-prompt')
+        );
+      };
+
+      window.addEventListener(
         'touchstart',
         (e) => {
-          triggerFullscreenLandscape();
+          this.sound.ensureContext();
           for (let i = 0; i < e.changedTouches.length; i++) {
             const t = e.changedTouches[i];
-            if (t.clientX > window.innerWidth * 0.35 && touchCamId === null) {
+            if (touchCamId === null && !isInteractiveUI(t.target)) {
               touchCamId = t.identifier;
               lastTouchX = t.clientX;
               lastTouchY = t.clientY;
@@ -1222,7 +1233,7 @@
         { passive: false }
       );
 
-      this.canvas.addEventListener(
+      window.addEventListener(
         'touchmove',
         (e) => {
           for (let i = 0; i < e.changedTouches.length; i++) {
@@ -1232,8 +1243,11 @@
               const dy = t.clientY - lastTouchY;
               lastTouchX = t.clientX;
               lastTouchY = t.clientY;
+
               this.cameraYaw -= dx * 0.006;
               this.cameraPitch = Math.max(-0.4, Math.min(1.2, this.cameraPitch + dy * 0.005));
+
+              if (e.cancelable) e.preventDefault();
             }
           }
         },
@@ -1247,8 +1261,8 @@
           }
         }
       };
-      this.canvas.addEventListener('touchend', endTouch);
-      this.canvas.addEventListener('touchcancel', endTouch);
+      window.addEventListener('touchend', endTouch, { passive: true });
+      window.addEventListener('touchcancel', endTouch, { passive: true });
 
       // Virtual Joystick (Mobile)
       const joyZone = document.getElementById('joystick-zone');
@@ -1259,8 +1273,8 @@
       joyZone.addEventListener(
         'touchstart',
         (e) => {
-          triggerFullscreenLandscape();
-          e.preventDefault();
+          this.sound.ensureContext();
+          if (e.cancelable) e.preventDefault();
           const t = e.changedTouches[0];
           joyTouchId = t.identifier;
           const rect = joyZone.getBoundingClientRect();
@@ -1270,13 +1284,13 @@
         { passive: false }
       );
 
-      joyZone.addEventListener(
+      window.addEventListener(
         'touchmove',
         (e) => {
-          e.preventDefault();
           for (let i = 0; i < e.changedTouches.length; i++) {
             const t = e.changedTouches[i];
             if (t.identifier === joyTouchId) {
+              if (e.cancelable) e.preventDefault();
               this.updateJoystick(t.clientX, t.clientY, joyCenter, joyKnob);
             }
           }
@@ -1293,22 +1307,22 @@
           }
         }
       };
-      joyZone.addEventListener('touchend', resetJoy);
-      joyZone.addEventListener('touchcancel', resetJoy);
+      window.addEventListener('touchend', resetJoy, { passive: true });
+      window.addEventListener('touchcancel', resetJoy, { passive: true });
 
       // Jump Button (Mobile)
       const jumpBtn = document.getElementById('m-jump-btn');
       jumpBtn.addEventListener('touchstart', (e) => {
-        triggerFullscreenLandscape();
-        e.preventDefault();
+        this.sound.ensureContext();
+        if (e.cancelable) e.preventDefault();
         this.triggerJump();
       });
 
       // Respawn Button (Mobile)
       const respBtn = document.getElementById('m-respawn-btn');
       respBtn.addEventListener('touchstart', (e) => {
-        triggerFullscreenLandscape();
-        e.preventDefault();
+        this.sound.ensureContext();
+        if (e.cancelable) e.preventDefault();
         this.respawn(this.currentFloor);
       });
     }
@@ -1384,11 +1398,11 @@
 
         if (isFs) {
           this.lockLandscape();
+        } else {
+          this.unlockOrientation();
         }
 
-        this.handleResize();
-        setTimeout(() => this.handleResize(), 150);
-        setTimeout(() => this.handleResize(), 350);
+        this.triggerMultiPassResize();
       };
 
       document.addEventListener('fullscreenchange', updateFsUI);
@@ -1450,10 +1464,9 @@
           try {
             const p = req.call(el);
             if (p && typeof p.then === 'function') {
-              p.catch((err) => {
+              await p.catch((err) => {
                 console.warn('Fullscreen request rejected:', err);
               });
-              await p.catch(() => {});
             }
           } catch (err) {
             console.warn('Fullscreen error:', err);
@@ -1462,9 +1475,7 @@
       }
 
       await this.lockLandscape();
-      this.handleResize();
-      setTimeout(() => this.handleResize(), 150);
-      setTimeout(() => this.handleResize(), 350);
+      this.triggerMultiPassResize();
     }
 
     async lockLandscape() {
@@ -1504,9 +1515,7 @@
       }
 
       this.unlockOrientation();
-      this.handleResize();
-      setTimeout(() => this.handleResize(), 150);
-      setTimeout(() => this.handleResize(), 350);
+      this.triggerMultiPassResize();
     }
 
     unlockOrientation() {
@@ -1521,17 +1530,61 @@
           screen.msUnlockOrientation();
         }
       } catch (err) {
-        console.warn('Orientation unlock notice:', err.message || err);
+        // Quiet ignore
       }
     }
 
+    triggerMultiPassResize() {
+      this.handleResize();
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => this.handleResize());
+      }
+      setTimeout(() => this.handleResize(), 60);
+      setTimeout(() => this.handleResize(), 160);
+      setTimeout(() => this.handleResize(), 320);
+      setTimeout(() => this.handleResize(), 600);
+      setTimeout(() => this.handleResize(), 1000);
+    }
+
     handleResize() {
-      if (this.camera && this.renderer) {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        this.camera.aspect = w / h;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(w, h);
+      if (!this.camera || !this.renderer) return;
+
+      const vv = window.visualViewport;
+      let w = window.innerWidth;
+      let h = window.innerHeight;
+
+      if (vv && vv.width && vv.height) {
+        w = Math.round(vv.width);
+        h = Math.round(vv.height);
+      } else if (document.documentElement && document.documentElement.clientWidth) {
+        w = document.documentElement.clientWidth;
+        h = document.documentElement.clientHeight;
+      }
+
+      if (w <= 0 || h <= 0) return;
+
+      const aspect = w / h;
+      this.camera.aspect = aspect;
+
+      // Dynamic FOV: in portrait mode (aspect < 1.0), expand vertical FOV so platforms stay comfortably in view
+      if (aspect < 1.0) {
+        const desiredHFOV = 80 * (Math.PI / 180);
+        const vFOV = 2 * Math.atan(Math.tan(desiredHFOV / 2) / aspect) * (180 / Math.PI);
+        this.camera.fov = Math.max(65, Math.min(92, vFOV));
+      } else {
+        this.camera.fov = 65;
+      }
+      this.camera.updateProjectionMatrix();
+
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      this.renderer.setSize(w, h, true);
+
+      // Orientation advisory hint: show only in portrait on mobile devices
+      const rotateHint = document.getElementById('rotate-device-hint');
+      if (rotateHint) {
+        const isPortrait = h > w;
+        const isMobileScreen = Math.max(w, h) < 1200;
+        rotateHint.style.display = (isPortrait && isMobileScreen) ? 'block' : 'none';
       }
     }
 
