@@ -472,7 +472,7 @@
         { name: 'Первые шаги', color: 0x22c55e, type: 'basic' },
         { name: 'Широкие прыжки', color: 0x16a34a, type: 'steps' },
         { name: 'Лавовые полосы', color: 0xeab308, type: 'lava' },
-        { name: 'Двойная лава', color: 0xf59e0b, type: 'double_lava' },
+        { name: 'Лавовый крест', color: 0xf59e0b, type: 'lava_cross' },
 
         // --- Tier 2: Исчезновение и Скольжение (Этажи 5–8) ---
         { name: 'Хрупкий мост', color: 0xf97316, type: 'vanishing' },
@@ -656,13 +656,14 @@
             break;
           }
 
-          case 'double_lava': {
-            // Platform with two lava stripes on EVERY platform
-            this.addPlatform(pos, new THREE.Vector3(3.6, 0.6, 2.5), 0x334155);
-            const h1 = pos.clone().add(new THREE.Vector3(-0.7, 0.35, 0));
-            const h2 = pos.clone().add(new THREE.Vector3(0.7, 0.35, 0));
-            this.addHazard(h1, new THREE.Vector3(0.4, 0.25, 2.4));
-            this.addHazard(h2, new THREE.Vector3(0.4, 0.25, 2.4));
+          case 'lava_cross': {
+            // Platform with a lethal red-hot lava cross '+' on EVERY platform
+            this.addPlatform(pos, new THREE.Vector3(3.4, 0.6, 3.4), 0x334155);
+            const crossCenter = pos.clone().add(new THREE.Vector3(0, 0.35, 0));
+            // Arm 1 (along X)
+            this.addHazard(crossCenter, new THREE.Vector3(3.3, 0.25, 0.6));
+            // Arm 2 (along Z)
+            this.addHazard(crossCenter, new THREE.Vector3(0.6, 0.25, 3.3));
             break;
           }
 
