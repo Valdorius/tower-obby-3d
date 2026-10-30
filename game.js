@@ -470,7 +470,7 @@
       const floorThemes = [
         // --- Tier 1: Базовый паркур (Этажи 1–4) ---
         { name: 'Первые шаги', color: 0x22c55e, type: 'basic' },
-        { name: 'Широкие прыжки', color: 0x16a34a, type: 'steps' },
+        { name: 'Парящие диски', color: 0x059669, type: 'discs' },
         { name: 'Лавовые полосы', color: 0xeab308, type: 'lava' },
         { name: 'Лавовый крест', color: 0xf59e0b, type: 'lava_cross' },
 
@@ -642,9 +642,15 @@
             break;
           }
 
-          case 'steps': {
-            // Slightly smaller platforms for accuracy
-            this.addPlatform(pos, new THREE.Vector3(2.3, 0.6, 2.3), 0x16a34a);
+          case 'discs': {
+            // Floating round stepping discs in a dynamic zig-zag path
+            const radOffset = (i % 2 === 1) ? 1.0 : -0.9;
+            const discRad = radius + radOffset;
+            const discPx = Math.cos(curAngle) * discRad;
+            const discPz = Math.sin(curAngle) * discRad;
+            const discHeightOffset = (i % 2 === 1) ? 0.25 : -0.15;
+            const discPos = new THREE.Vector3(discPx, y + discHeightOffset, discPz);
+            this.addCylinderPlatform(discPos, 1.35, 0.5, 0x059669);
             break;
           }
 
@@ -864,6 +870,49 @@
         min: new THREE.Vector3(pos.x - size.x / 2, pos.y - size.y / 2, pos.z - size.z / 2),
         max: new THREE.Vector3(pos.x + size.x / 2, pos.y + size.y / 2, pos.z + size.z / 2),
         isIce,
+        tag
+      };
+      this.platforms.push(plat);
+      return plat;
+    }
+
+    addCylinderPlatform(pos, radius, height, colorHex, tag = '') {
+      const geo = new THREE.CylinderGeometry(radius, radius * 1.05, height, 24);
+      const mat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        roughness: 0.35,
+        metalness: 0.25
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.copy(pos);
+      mesh.receiveShadow = true;
+      mesh.castShadow = true;
+      this.scene.add(mesh);
+
+      // Decorative glowing neon mint rim
+      const rimGeo = new THREE.RingGeometry(radius * 0.72, radius * 0.95, 24);
+      const rimMat = new THREE.MeshBasicMaterial({ color: 0x6ee7b7, side: THREE.DoubleSide });
+      const rim = new THREE.Mesh(rimGeo, rimMat);
+      rim.rotation.x = -Math.PI / 2;
+      rim.position.set(pos.x, pos.y + height / 2 + 0.02, pos.z);
+      this.scene.add(rim);
+
+      // Central white beacon dot
+      const dotGeo = new THREE.CircleGeometry(0.25, 16);
+      const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+      const dot = new THREE.Mesh(dotGeo, dotMat);
+      dot.rotation.x = -Math.PI / 2;
+      dot.position.set(pos.x, pos.y + height / 2 + 0.03, pos.z);
+      this.scene.add(dot);
+
+      const size = new THREE.Vector3(radius * 2, height, radius * 2);
+      const plat = {
+        mesh,
+        pos,
+        size,
+        min: new THREE.Vector3(pos.x - radius, pos.y - height / 2, pos.z - radius),
+        max: new THREE.Vector3(pos.x + radius, pos.y + height / 2, pos.z + radius),
+        isIce: false,
         tag
       };
       this.platforms.push(plat);
