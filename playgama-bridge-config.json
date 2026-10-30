@@ -1,0 +1,30 @@
+{
+  "$schema": "https://bridge.playgama.com/v2/stable/playgama-bridge-config.schema.json",
+  "platforms": {
+    "game_distribution": {
+      "gameId": "tower-obby-3d"
+    },
+    "yandex": {},
+    "crazy_games": {},
+    "poki": {},
+    "vk": {}
+  },
+  "advertisement": {
+    "interstitial": {
+      "placements": [
+        { "id": "floor_completed" },
+        { "id": "game_win" },
+        { "id": "respawn" }
+      ]
+    },
+    "rewarded": {
+      "placements": [
+        { "id": "skip_floor" },
+        { "id": "unlock_skin" }
+      ]
+    }
+  },
+  "leaderboards": {
+    "default": "tower_best_time"
+  }
+}

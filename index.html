@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Башня Обби 3D (Tower of Obby)</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Three.js 3D Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Playgama Bridge SDK -->
+  <script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
+</head>
+<body>
+  <!-- 3D Canvas -->
+  <canvas id="canvas3d"></canvas>
+
+  <!-- UI Overlay -->
+  <div id="ui-layer">
+    <!-- Top HUD -->
+    <header class="top-header">
+      <div class="hud-panel">
+        <div class="hud-pill highlight">
+          <span>🏰</span>
+          <span id="floor-display">ЭТАЖ 1 / 10</span>
+        </div>
+        <div class="hud-pill">
+          <span>⏱️</span>
+          <span id="timer-display">00:00.0</span>
+        </div>
+        <div class="hud-pill">
+          <span>🪙</span>
+          <span id="coins-display">0</span>
+        </div>
+      </div>
+
+      <div class="hud-panel">
+        <button id="skip-btn" class="hud-btn skip-btn" title="Пропустить сложный этаж">
+          <span>⏩ Пропустить (+📺)</span>
+        </button>
+        <button id="mute-btn" class="hud-btn" title="Вкл/Выкл звук">
+          <span id="mute-icon">🔊</span>
+        </button>
+        <button id="respawn-btn-top" class="hud-btn" title="Вернуться на чекпоинт (R)">
+          <span>🔄 Респаун</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Toast Notification for Floor Advancement -->
+    <div id="floor-toast">ЭТАЖ 1: ПЕРВЫЕ ШАГИ</div>
+
+    <!-- Desktop Key Hints -->
+    <div id="desktop-hint">
+      <span><span class="kbd">W</span><span class="kbd">A</span><span class="kbd">S</span><span class="kbd">D</span> Ходьба</span>
+      <span><span class="kbd">ПРОБЕЛ</span> Прыжок</span>
+      <span><span class="kbd">SHIFT</span> Бег</span>
+      <span><span class="kbd">МЫШЬ</span> Обзор (зажать)</span>
+      <span><span class="kbd">R</span> Респаун</span>
+    </div>
+
+    <!-- Mobile Virtual Controls -->
+    <div id="mobile-controls">
+      <!-- Virtual Joystick -->
+      <div id="joystick-zone">
+        <div id="joystick-knob"></div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="mobile-action-buttons">
+        <button id="m-respawn-btn" class="action-btn respawn-btn" title="Респаун">🔄</button>
+        <button id="m-jump-btn" class="action-btn jump-btn" title="Прыжок">⬆️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Victory Modal -->
+  <div id="victory-modal" class="modal-overlay">
+    <div class="modal-card">
+      <h2>🏆 ПОБЕДА! 🏆</h2>
+      <p>Ты покорил все 10 этажей великой Башни Обби!</p>
+      
+      <div class="stat-grid">
+        <div class="stat-item">
+          <div class="stat-label">Твое Время</div>
+          <div class="stat-value" id="final-time">00:00.0</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Собрано Монет</div>
+          <div class="stat-value" id="final-coins">0 / 20</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Падений / Смертей</div>
+          <div class="stat-value" id="final-deaths">0</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Лучший Рекорд</div>
+          <div class="stat-value" id="best-time">--:--.-</div>
+        </div>
+      </div>
+
+      <button id="restart-game-btn" class="btn-primary">Сыграть Снова 🚀</button>
+    </div>
+  </div>
+
+  <!-- Game Logic -->
+  <script src="game.js"></script>
+</body>
+</html>
