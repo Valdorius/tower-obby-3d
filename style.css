@@ -366,6 +366,10 @@ html, body {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.btn-short {
+  display: none;
+}
+
 /* Touch detection / Responsive */
 @media (hover: hover) and (pointer: fine) {
   #mobile-controls {
@@ -378,10 +382,25 @@ html, body {
     display: none;
   }
   .hud-pill {
-    padding: 6px 12px;
+    padding: 6px 10px;
     font-size: 13px;
+    gap: 5px;
   }
   .top-header {
-    padding: 10px 14px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .hud-panel {
+    gap: 6px;
+  }
+  .hud-btn {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .btn-label {
+    display: none;
+  }
+  .btn-short {
+    display: inline;
   }
 }

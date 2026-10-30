@@ -351,7 +351,7 @@
       this.currentGround = null;
 
       // Camera state
-      this.cameraYaw = 0;
+      this.cameraYaw = Math.PI;
       this.cameraPitch = 0.25;
       this.cameraDist = 5.2;
 
@@ -440,27 +440,31 @@
 
     // --- LEVEL GENERATION (10 FLOORS) ---
     buildTower() {
-      const FLOOR_HEIGHT = 10.5;
-      const TOWER_RADIUS = 13.5;
+      const FLOOR_HEIGHT = 9.6;
+      const TOWER_RADIUS = 10.5;
+      const OBSTACLES_PER_FLOOR = 7;
+      const TOTAL_STEPS_PER_FLOOR = OBSTACLES_PER_FLOOR + 1; // 8 steps per floor
+      const ANGLE_STEP = 0.38; // radians per step (~21.8 degrees)
+      const HEIGHT_STEP = FLOOR_HEIGHT / TOTAL_STEPS_PER_FLOOR; // 1.2m per step
 
       // Tower Outer Frame (Stylized semi-transparent pillars)
-      const pillarGeo = new THREE.CylinderGeometry(0.3, 0.3, 115, 12);
+      const pillarGeo = new THREE.CylinderGeometry(0.3, 0.3, 125, 12);
       const pillarMat = new THREE.MeshBasicMaterial({ color: 0x1e293b, wireframe: true });
       for (let i = 0; i < 8; i++) {
         const angle = (i / 8) * Math.PI * 2;
         const p = new THREE.Mesh(pillarGeo, pillarMat);
-        p.position.set(Math.cos(angle) * TOWER_RADIUS, 55, Math.sin(angle) * TOWER_RADIUS);
+        p.position.set(Math.cos(angle) * (TOWER_RADIUS + 4.0), 55, Math.sin(angle) * (TOWER_RADIUS + 4.0));
         this.scene.add(p);
       }
 
       // Base bottom floor (Lava abyss at bottom)
-      const abyssGeo = new THREE.CircleGeometry(TOWER_RADIUS + 4, 32);
+      const abyssGeo = new THREE.CircleGeometry(TOWER_RADIUS + 10, 32);
       const abyssMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
       const abyss = new THREE.Mesh(abyssGeo, abyssMat);
       abyss.rotation.x = -Math.PI / 2;
       abyss.position.y = -2;
       this.scene.add(abyss);
-      this.addHazard(new THREE.Vector3(0, -1, 0), new THREE.Vector3(35, 1.5, 35));
+      this.addHazard(new THREE.Vector3(0, -1, 0), new THREE.Vector3(50, 1.5, 50));
 
       // Floor themes definition
       const floorThemes = [
@@ -478,64 +482,101 @@
 
       for (let floorIdx = 0; floorIdx < 10; floorIdx++) {
         const floorNum = floorIdx + 1;
-        const floorY = floorIdx * FLOOR_HEIGHT;
         const theme = floorThemes[floorIdx];
-        const floorAngleStart = (floorIdx * 0.7) % (Math.PI * 2);
-
-        // Checkpoint Landing Platform
-        const cpX = Math.cos(floorAngleStart) * (TOWER_RADIUS - 4);
-        const cpZ = Math.sin(floorAngleStart) * (TOWER_RADIUS - 4);
-        const checkPos = new THREE.Vector3(cpX, floorY, cpZ);
+        const globalStep = floorIdx * TOTAL_STEPS_PER_FLOOR;
+        const cpAngle = globalStep * ANGLE_STEP;
+        const cpY = globalStep * HEIGHT_STEP;
+        const checkPos = new THREE.Vector3(
+          Math.cos(cpAngle) * TOWER_RADIUS,
+          cpY,
+          Math.sin(cpAngle) * TOWER_RADIUS
+        );
 
         this.checkpoints[floorIdx] = {
           floor: floorNum,
           name: theme.name,
-          pos: checkPos.clone().add(new THREE.Vector3(0, 1.2, 0))
+          pos: checkPos.clone().add(new THREE.Vector3(0, 0.45, 0))
         };
 
-        // Checkpoint Pad Mesh
+        // Checkpoint Pad Mesh (Wide, comfortable landing zone: 4.8 x 0.8 x 4.8)
         this.addPlatform(
           checkPos,
-          new THREE.Vector3(4.2, 0.8, 4.2),
+          new THREE.Vector3(4.8, 0.8, 4.8),
           theme.color,
           false,
           `checkpoint_${floorNum}`
         );
 
-        // Checkpoint Flag/Glow Marker
-        this.createCheckpointMarker(checkPos, theme.color, floorNum);
+        // Checkpoint Arch / Visual Gateway
+        this.createCheckpointArch(checkPos, theme.color, floorNum, theme.name, cpAngle);
 
-        // Add 2 Coins per floor along the path
-        this.createCoin(checkPos.clone().add(new THREE.Vector3(0, 1.5, 0)));
+        // Add Coin on the Checkpoint platform
+        this.createCoin(checkPos.clone().add(new THREE.Vector3(0, 1.6, 0)));
 
-        // Generate Stage Obstacles based on type
-        this.buildStageObstacles(floorIdx, floorY, floorAngleStart, theme, TOWER_RADIUS);
+        // Generate Stage Obstacles leading directly to the next floor
+        this.buildStageObstacles(
+          floorIdx,
+          globalStep,
+          theme,
+          TOWER_RADIUS,
+          ANGLE_STEP,
+          HEIGHT_STEP,
+          OBSTACLES_PER_FLOOR
+        );
       }
 
-      // Summit Trophy on Floor 10
-      this.createSummitTrophy(10 * FLOOR_HEIGHT);
+      // Summit on top of Floor 10 (at globalStep = 10 * 8 = 80)
+      const summitStep = 10 * TOTAL_STEPS_PER_FLOOR;
+      const summitAngle = summitStep * ANGLE_STEP;
+      const summitY = summitStep * HEIGHT_STEP;
+      const summitPos = new THREE.Vector3(
+        Math.cos(summitAngle) * TOWER_RADIUS,
+        summitY,
+        Math.sin(summitAngle) * TOWER_RADIUS
+      );
+      this.createSummitTrophy(summitPos);
     }
 
-    createCheckpointMarker(pos, colorHex, floorNum) {
-      const poleGeo = new THREE.CylinderGeometry(0.08, 0.08, 2.8, 8);
-      const poleMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-      const pole = new THREE.Mesh(poleGeo, poleMat);
-      pole.position.set(pos.x, pos.y + 1.4, pos.z);
-      this.scene.add(pole);
+    createCheckpointArch(pos, colorHex, floorNum, themeName, cpAngle) {
+      const archGroup = new THREE.Group();
+      archGroup.position.copy(pos);
+      archGroup.rotation.y = -cpAngle;
 
-      const flagGeo = new THREE.BoxGeometry(0.8, 0.5, 0.04);
-      const flagMat = new THREE.MeshBasicMaterial({ color: colorHex });
-      const flag = new THREE.Mesh(flagGeo, flagMat);
-      flag.position.set(pos.x + 0.4, pos.y + 2.3, pos.z);
-      this.scene.add(flag);
+      // Pillars
+      const pillarGeo = new THREE.BoxGeometry(0.35, 3.8, 0.35);
+      const pillarMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3 });
+      const leftPillar = new THREE.Mesh(pillarGeo, pillarMat);
+      leftPillar.position.set(-2.0, 1.9, 0);
+      const rightPillar = new THREE.Mesh(pillarGeo, pillarMat);
+      rightPillar.position.set(2.0, 1.9, 0);
 
-      // Light ring
-      const ringGeo = new THREE.RingGeometry(1.2, 1.4, 24);
+      // Neon Top Beam
+      const beamGeo = new THREE.BoxGeometry(4.4, 0.45, 0.45);
+      const beamMat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        emissive: colorHex,
+        emissiveIntensity: 0.6
+      });
+      const beam = new THREE.Mesh(beamGeo, beamMat);
+      beam.position.set(0, 3.8, 0);
+
+      // Glowing Landing Disc on floor
+      const ringGeo = new THREE.RingGeometry(1.2, 1.7, 24);
       const ringMat = new THREE.MeshBasicMaterial({ color: colorHex, side: THREE.DoubleSide });
       const ring = new THREE.Mesh(ringGeo, ringMat);
       ring.rotation.x = -Math.PI / 2;
-      ring.position.set(pos.x, pos.y + 0.42, pos.z);
-      this.scene.add(ring);
+      ring.position.set(0, 0.42, 0);
+
+      // Directional arrow on the floor indicating path forward
+      const arrowGeo = new THREE.ConeGeometry(0.3, 0.8, 3);
+      const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+      arrow.rotation.x = -Math.PI / 2;
+      arrow.rotation.z = Math.PI / 2;
+      arrow.position.set(0, 0.42, 1.2);
+
+      archGroup.add(leftPillar, rightPillar, beam, ring, arrow);
+      this.scene.add(archGroup);
     }
 
     createCoin(pos) {
@@ -553,51 +594,56 @@
       this.coinsObjects.push({ mesh: coin, collected: false, startY: pos.y });
     }
 
-    buildStageObstacles(floorIdx, floorY, angleStart, theme, radius) {
-      const count = 6;
-      const angleStep = 0.52;
-      const nextFloorY = floorY + 10.5;
-
-      for (let i = 1; i <= count; i++) {
-        const curAngle = angleStart + i * angleStep;
-        const t = i / (count + 1);
-        const y = floorY + t * 9.5;
-        const rad = radius - 4.2 + Math.sin(i * 1.5) * 1.2;
-        const px = Math.cos(curAngle) * rad;
-        const pz = Math.sin(curAngle) * rad;
+    buildStageObstacles(
+      floorIdx,
+      globalStep,
+      theme,
+      radius,
+      angleStep,
+      heightStep,
+      obstaclesCount
+    ) {
+      for (let i = 1; i <= obstaclesCount; i++) {
+        const curStep = globalStep + i;
+        const curAngle = curStep * angleStep;
+        const y = curStep * heightStep;
+        const px = Math.cos(curAngle) * radius;
+        const pz = Math.sin(curAngle) * radius;
         const pos = new THREE.Vector3(px, y, pz);
 
-        if (i === 3) {
-          // Extra coin on midway
+        if (i === 4) {
+          // Extra coin on midway of the stage
           this.createCoin(pos.clone().add(new THREE.Vector3(0, 1.4, 0)));
         }
 
         switch (theme.type) {
           case 'basic': {
             // Gentle solid step platforms
-            this.addPlatform(pos, new THREE.Vector3(2.5, 0.6, 2.5), 0x22c55e);
+            this.addPlatform(pos, new THREE.Vector3(2.6, 0.6, 2.6), 0x22c55e);
             break;
           }
 
           case 'lava': {
-            // Platform with red hot lava stripe in center
-            this.addPlatform(pos, new THREE.Vector3(3.4, 0.6, 2.2), 0x475569);
-            const hazardPos = pos.clone().add(new THREE.Vector3(0, 0.35, 0));
-            this.addHazard(hazardPos, new THREE.Vector3(0.7, 0.3, 2.1));
+            // Platform with red hot lava stripe in center (except step 1 which is entry)
+            this.addPlatform(pos, new THREE.Vector3(3.0, 0.6, 2.4), 0x475569);
+            if (i > 1) {
+              const hazardPos = pos.clone().add(new THREE.Vector3(0, 0.35, 0));
+              this.addHazard(hazardPos, new THREE.Vector3(0.6, 0.25, 2.3));
+            }
             break;
           }
 
           case 'vanishing': {
             // Disappearing orange platforms
-            this.addVanishingBlock(pos, new THREE.Vector3(2.4, 0.5, 2.4), 0xf97316);
+            this.addVanishingBlock(pos, new THREE.Vector3(2.6, 0.5, 2.6), 0xf97316);
             break;
           }
 
           case 'spinner': {
             // Circular platform + Rotating lethal beam
-            this.addPlatform(pos, new THREE.Vector3(3.2, 0.6, 3.2), 0x334155);
+            this.addPlatform(pos, new THREE.Vector3(3.0, 0.6, 3.0), 0x334155);
             if (i % 2 === 0) {
-              this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.7, 0)), 3.8);
+              this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.65, 0)), 3.4);
             }
             break;
           }
@@ -605,9 +651,9 @@
           case 'bouncers': {
             // Launch pads that spring the player upward
             if (i % 2 === 1) {
-              this.addLaunchPad(pos, new THREE.Vector3(2.2, 0.6, 2.2), 24);
+              this.addLaunchPad(pos, new THREE.Vector3(2.4, 0.6, 2.4), 22);
             } else {
-              this.addPlatform(pos, new THREE.Vector3(2.0, 0.6, 2.0), 0xa855f7);
+              this.addPlatform(pos, new THREE.Vector3(2.4, 0.6, 2.4), 0xa855f7);
             }
             break;
           }
@@ -620,15 +666,15 @@
 
           case 'moving': {
             // Platforms gliding horizontally
-            this.addMovingPlatform(pos, new THREE.Vector3(2.4, 0.6, 2.4), 0x06b6d4, curAngle);
+            this.addMovingPlatform(pos, new THREE.Vector3(2.5, 0.6, 2.5), 0x06b6d4, curAngle);
             break;
           }
 
           case 'lasers': {
             // Platforms with pulsating on/off lasers
             this.addPlatform(pos, new THREE.Vector3(2.8, 0.6, 2.8), 0x475569);
-            if (i % 2 === 1) {
-              this.addPulsingLaser(pos.clone().add(new THREE.Vector3(0, 0.8, 0)), 2.6);
+            if (i % 2 === 0) {
+              this.addPulsingLaser(pos.clone().add(new THREE.Vector3(0, 0.75, 0)), 2.6);
             }
             break;
           }
@@ -636,36 +682,35 @@
           case 'narrow': {
             // Narrow balance beams & small cylinders
             const isBeam = i % 2 === 0;
-            const size = isBeam ? new THREE.Vector3(0.9, 0.5, 3.2) : new THREE.Vector3(1.2, 0.5, 1.2);
+            const size = isBeam ? new THREE.Vector3(1.1, 0.5, 3.0) : new THREE.Vector3(1.6, 0.5, 1.6);
             this.addPlatform(pos, size, 0x8b5cf6);
             break;
           }
 
           case 'summit': {
-            // Combination gauntlet
-            if (i === 1) this.addLaunchPad(pos, new THREE.Vector3(2.0, 0.6, 2.0), 22);
-            else if (i === 3) this.addVanishingBlock(pos, new THREE.Vector3(2.0, 0.5, 2.0), 0xfacc15);
-            else if (i === 5) {
+            // Combination gauntlet on final approach
+            if (i === 1) this.addPlatform(pos, new THREE.Vector3(2.6, 0.6, 2.6), 0xfacc15);
+            else if (i === 2) this.addVanishingBlock(pos, new THREE.Vector3(2.4, 0.5, 2.4), 0xfacc15);
+            else if (i === 3) this.addLaunchPad(pos, new THREE.Vector3(2.4, 0.6, 2.4), 20);
+            else if (i === 4) {
               this.addPlatform(pos, new THREE.Vector3(3.0, 0.6, 3.0), 0x334155);
-              this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.7, 0)), 3.5);
-            } else {
-              this.addPlatform(pos, new THREE.Vector3(2.2, 0.6, 2.2), 0xfacc15);
-            }
+              this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.65, 0)), 3.2);
+            } else if (i === 5) this.addVanishingBlock(pos, new THREE.Vector3(2.4, 0.5, 2.4), 0xfacc15);
+            else if (i === 6) this.addMovingPlatform(pos, new THREE.Vector3(2.5, 0.6, 2.5), 0x06b6d4, curAngle);
+            else this.addLaunchPad(pos, new THREE.Vector3(2.6, 0.6, 2.6), 22);
             break;
           }
         }
       }
     }
 
-    createSummitTrophy(y) {
-      const summitPos = new THREE.Vector3(0, y + 2, 0);
-
+    createSummitTrophy(summitPos) {
       // Huge Golden Summit Platform
       this.addPlatform(summitPos, new THREE.Vector3(7.5, 1.2, 7.5), 0xfacc15, false, 'summit_pad');
 
       // Giant Golden Trophy Mesh
       this.trophyGroup = new THREE.Group();
-      this.trophyGroup.position.set(0, y + 3.2, 0);
+      this.trophyGroup.position.set(summitPos.x, summitPos.y + 1.2, summitPos.z);
 
       const baseGeo = new THREE.CylinderGeometry(0.8, 1.1, 0.5, 16);
       const cupGeo = new THREE.CylinderGeometry(1.2, 0.5, 1.6, 16);
@@ -685,7 +730,7 @@
 
       // Confetti emitter container
       this.confettiParticles = [];
-      const confGeo = new THREE.PlaneGeometry(0.18, 0.18);
+      const confGeo = new THREE.PlaneGeometry(0.2, 0.2);
       const colors = [0xef4444, 0x3b82f6, 0x10b981, 0xfacc15, 0xec4899];
       for (let i = 0; i < 70; i++) {
         const mat = new THREE.MeshBasicMaterial({
@@ -694,14 +739,15 @@
         });
         const p = new THREE.Mesh(confGeo, mat);
         p.position.set(
-          (Math.random() - 0.5) * 6,
-          y + 3 + Math.random() * 5,
-          (Math.random() - 0.5) * 6
+          summitPos.x + (Math.random() - 0.5) * 6,
+          summitPos.y + 2 + Math.random() * 5,
+          summitPos.z + (Math.random() - 0.5) * 6
         );
         p.visible = false;
         p.userData = {
           vy: Math.random() * -0.05 - 0.02,
-          rotSpeed: Math.random() * 0.1 - 0.05
+          rotSpeed: Math.random() * 0.1 - 0.05,
+          baseY: summitPos.y
         };
         this.scene.add(p);
         this.confettiParticles.push(p);
@@ -1007,6 +1053,40 @@
       this.coinsDisplay = document.getElementById('coins-display');
       this.floorToast = document.getElementById('floor-toast');
 
+      // Fullscreen toggle button
+      const fsBtn = document.getElementById('fullscreen-btn');
+      if (fsBtn) {
+        fsBtn.addEventListener('click', () => {
+          this.toggleFullscreen();
+        });
+      }
+
+      const updateFsUI = () => {
+        const isFs = !!(
+          document.fullscreenElement ||
+          document.webkitFullscreenElement ||
+          document.mozFullScreenElement ||
+          document.msFullscreenElement
+        );
+        const icon = document.getElementById('fullscreen-icon');
+        const text = document.getElementById('fullscreen-text');
+        if (icon) icon.textContent = isFs ? '🗗' : '⛶';
+        if (text) text.textContent = isFs ? 'Окно' : 'Экран';
+
+        setTimeout(() => {
+          if (this.camera && this.renderer) {
+            this.camera.aspect = window.innerWidth / window.innerHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+          }
+        }, 120);
+      };
+
+      document.addEventListener('fullscreenchange', updateFsUI);
+      document.addEventListener('webkitfullscreenchange', updateFsUI);
+      document.addEventListener('mozfullscreenchange', updateFsUI);
+      document.addEventListener('MSFullscreenChange', updateFsUI);
+
       // Top buttons
       document.getElementById('mute-btn').addEventListener('click', () => {
         const isMuted = this.sound.toggleMute();
@@ -1021,7 +1101,7 @@
       document.getElementById('skip-btn').addEventListener('click', () => {
         if (this.currentFloor < this.maxFloor) {
           this.bridge.showSkipAd(() => {
-            this.advanceFloor(this.currentFloor + 1);
+            this.advanceFloor(this.currentFloor + 1, true);
           });
         }
       });
@@ -1037,6 +1117,42 @@
       });
     }
 
+    toggleFullscreen() {
+      const doc = document;
+      const el = document.documentElement;
+
+      const isFs = !!(
+        doc.fullscreenElement ||
+        doc.webkitFullscreenElement ||
+        doc.mozFullScreenElement ||
+        doc.msFullscreenElement
+      );
+
+      if (!isFs) {
+        const req =
+          el.requestFullscreen ||
+          el.webkitRequestFullscreen ||
+          el.mozRequestFullScreen ||
+          el.msRequestFullscreen;
+        if (req) {
+          req.call(el).catch((err) => {
+            console.warn('Fullscreen error:', err);
+          });
+        }
+      } else {
+        const exit =
+          doc.exitFullscreen ||
+          doc.webkitExitFullscreen ||
+          doc.mozCancelFullScreen ||
+          doc.msExitFullscreen;
+        if (exit) {
+          exit.call(doc).catch((err) => {
+            console.warn('Exit fullscreen error:', err);
+          });
+        }
+      }
+    }
+
     showToast(text) {
       this.floorToast.textContent = text;
       this.floorToast.classList.add('show');
@@ -1046,16 +1162,27 @@
       }, 2600);
     }
 
-    advanceFloor(targetFloor) {
+    advanceFloor(targetFloor, teleport = true) {
+      if (targetFloor > this.maxFloor) {
+        this.triggerVictory();
+        return;
+      }
       this.currentFloor = targetFloor;
       this.floorDisplay.textContent = `ЭТАЖ ${this.currentFloor} / ${this.maxFloor}`;
       const cp = this.checkpoints[this.currentFloor - 1];
-      this.showToast(`ЭТАЖ ${this.currentFloor}: ${cp.name.toUpperCase()}`);
+      if (cp) {
+        this.showToast(`🎉 ЭТАЖ ${this.currentFloor}: ${cp.name.toUpperCase()}!`);
+      }
       this.sound.playCheckpoint();
-      this.respawn(this.currentFloor);
+      this.bridge.saveProgress(this.bestTime || 0, this.coins);
 
-      if (this.currentFloor === this.maxFloor) {
-        document.getElementById('skip-btn').style.display = 'none';
+      if (teleport) {
+        this.respawn(this.currentFloor);
+      }
+
+      if (this.currentFloor >= this.maxFloor) {
+        const skipBtn = document.getElementById('skip-btn');
+        if (skipBtn) skipBtn.style.display = 'none';
       }
     }
 
@@ -1065,6 +1192,8 @@
         this.playerPos.copy(cp.pos);
         this.playerVel.set(0, 0, 0);
         this.isGrounded = true;
+        const cpAngle = (floorNum - 1) * 8 * 0.38;
+        this.cameraYaw = cpAngle + Math.PI;
       }
     }
 
@@ -1201,7 +1330,7 @@
             if (plat.tag && plat.tag.startsWith('checkpoint_')) {
               const floorNum = parseInt(plat.tag.split('_')[1], 10);
               if (floorNum > this.currentFloor) {
-                this.advanceFloor(floorNum);
+                this.advanceFloor(floorNum, false);
               }
             } else if (plat.tag === 'summit_pad') {
               this.triggerVictory();
