@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Башня Обби 3D (Tower of Obby)</title>
-  <link rel="stylesheet" href="style.css?v=3.2">
+  <link rel="stylesheet" href="style.css?v=4.0">
   <!-- Three.js 3D Engine (Bundled locally for 100% reliability) -->
   <script src="three.min.js"></script>
   <!-- Playgama Bridge SDK (Bundled locally) -->
@@ -104,11 +104,19 @@
         </div>
       </div>
 
-      <button id="restart-game-btn" class="btn-primary">Сыграть Снова 🚀</button>
+      <div class="modal-actions">
+        <button id="double-coins-btn" class="btn-rewarded">🎁 Удвоить Монеты (x2) (+📺)</button>
+        <button id="restart-game-btn" class="btn-primary">Сыграть Снова 🚀</button>
+      </div>
     </div>
   </div>
 
-  <!-- Game Logic -->
-  <script src="game.js?v=3.2"></script>
+  <!-- Modular Game Architecture -->
+  <script src="constants.js?v=4.0"></script>
+  <script src="sound.js?v=4.0"></script>
+  <script src="bridge.js?v=4.0"></script>
+  <script src="character.js?v=4.0"></script>
+  <script src="tower.js?v=4.0"></script>
+  <script src="game.js?v=4.0"></script>
 </body>
 </html>
