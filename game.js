@@ -433,23 +433,24 @@
       this.scene.add(this.character.group);
 
       // Window resize & orientation change across all browser APIs
-      const onResize = () => {
-        this.triggerMultiPassResize();
-      };
-      window.addEventListener('resize', onResize);
-      window.addEventListener('orientationchange', () => {
-        // Physical rotation of device: ensure orientation is unlocked so sensors read freely!
-        this.unlockOrientation();
-        this.triggerMultiPassResize();
-      });
-      if (window.screen && window.screen.orientation) {
-        if (typeof window.screen.orientation.addEventListener === 'function') {
+      try {
+        const onResize = () => {
+          this.triggerMultiPassResize();
+        };
+        window.addEventListener('resize', onResize);
+        window.addEventListener('orientationchange', () => {
+          // Physical rotation of device: ensure orientation is unlocked so sensors read freely!
+          this.unlockOrientation();
+          this.triggerMultiPassResize();
+        });
+        if (window.screen && window.screen.orientation && typeof window.screen.orientation.addEventListener === 'function') {
           window.screen.orientation.addEventListener('change', onResize);
         }
-        window.screen.orientation.onchange = onResize;
-      }
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', onResize);
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', onResize);
+        }
+      } catch (err) {
+        console.warn('Orientation listener setup notice:', err);
       }
     }
 
@@ -1208,12 +1209,15 @@
 
       const isInteractiveUI = (el) => {
         if (!el) return false;
+        const node = el.nodeType === 3 ? el.parentElement : el;
+        if (!node || typeof node.closest !== 'function') return false;
         return !!(
-          el.closest('#joystick-zone') ||
-          el.closest('.action-btn') ||
-          el.closest('.hud-btn') ||
-          el.closest('.modal-card') ||
-          el.closest('.fs-prompt')
+          node.closest('#joystick-zone') ||
+          node.closest('.action-btn') ||
+          node.closest('.hud-btn') ||
+          node.closest('.modal-card') ||
+          node.closest('.fs-prompt') ||
+          node.closest('#fs-prompt')
         );
       };
 
@@ -1273,6 +1277,7 @@
       joyZone.addEventListener(
         'touchstart',
         (e) => {
+          if (this.dismissFsPrompt) this.dismissFsPrompt();
           this.sound.ensureContext();
           if (e.cancelable) e.preventDefault();
           const t = e.changedTouches[0];
@@ -1313,6 +1318,7 @@
       // Jump Button (Mobile)
       const jumpBtn = document.getElementById('m-jump-btn');
       jumpBtn.addEventListener('touchstart', (e) => {
+        if (this.dismissFsPrompt) this.dismissFsPrompt();
         this.sound.ensureContext();
         if (e.cancelable) e.preventDefault();
         this.triggerJump();
@@ -1321,6 +1327,7 @@
       // Respawn Button (Mobile)
       const respBtn = document.getElementById('m-respawn-btn');
       respBtn.addEventListener('touchstart', (e) => {
+        if (this.dismissFsPrompt) this.dismissFsPrompt();
         this.sound.ensureContext();
         if (e.cancelable) e.preventDefault();
         this.respawn(this.currentFloor);
@@ -1363,21 +1370,51 @@
 
       // Fullscreen prompt badge
       const fsPrompt = document.getElementById('fs-prompt');
+      let fsPromptDismissed = false;
+      const dismissFsPrompt = () => {
+        if (!fsPrompt || fsPromptDismissed) return;
+        fsPromptDismissed = true;
+        fsPrompt.classList.add('hidden');
+        setTimeout(() => {
+          if (fsPrompt) fsPrompt.style.display = 'none';
+        }, 300);
+      };
+      this.dismissFsPrompt = dismissFsPrompt;
+
       if (fsPrompt) {
-        fsPrompt.addEventListener('click', (e) => {
-          e.stopPropagation();
+        const handleFsPrompt = async (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          dismissFsPrompt();
           this.manualExitedFullscreen = false;
           this.sound.ensureContext();
-          this.enterFullscreenLandscape();
-        });
+          await this.enterFullscreenLandscape();
+        };
+
+        fsPrompt.addEventListener('click', handleFsPrompt);
+        fsPrompt.addEventListener('touchend', handleFsPrompt);
+        fsPrompt.addEventListener('pointerup', handleFsPrompt);
+
+        // Auto-dismiss prompt after 8 seconds or on first movement
+        setTimeout(() => dismissFsPrompt(), 8000);
       }
 
-      // Fullscreen toggle button
+      // Fullscreen toggle button in top header
       const fsBtn = document.getElementById('fullscreen-btn');
       if (fsBtn) {
-        fsBtn.addEventListener('click', () => {
+        const handleFsToggle = (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          dismissFsPrompt();
+          this.sound.ensureContext();
           this.toggleFullscreen();
-        });
+        };
+        fsBtn.addEventListener('click', handleFsToggle);
+        fsBtn.addEventListener('touchend', handleFsToggle);
       }
 
       const updateFsUI = () => {
@@ -1387,13 +1424,8 @@
         if (icon) icon.textContent = isFs ? '🗗' : '⛶';
         if (text) text.textContent = isFs ? 'Окно' : 'Экран';
 
-        const fsPromptEl = document.getElementById('fs-prompt');
-        if (fsPromptEl) {
-          if (isFs) {
-            fsPromptEl.classList.add('hidden');
-          } else {
-            fsPromptEl.classList.remove('hidden');
-          }
+        if (fsPrompt && isFs) {
+          dismissFsPrompt();
         }
 
         if (isFs) {
