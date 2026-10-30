@@ -335,7 +335,7 @@
 
       // Game state
       this.currentFloor = 1;
-      this.maxFloor = 10;
+      this.maxFloor = 20;
       this.startTime = Date.now();
       this.timerRunning = true;
       this.bestTime = null;
@@ -438,49 +438,68 @@
       });
     }
 
-    // --- LEVEL GENERATION (10 FLOORS) ---
+    // --- LEVEL GENERATION (20 FLOORS IN STRICT DIFFICULTY PROGRESSION) ---
     buildTower() {
-      const FLOOR_HEIGHT = 9.6;
+      const FLOOR_HEIGHT = 9.2;
       const TOWER_RADIUS = 10.5;
       const OBSTACLES_PER_FLOOR = 7;
       const TOTAL_STEPS_PER_FLOOR = OBSTACLES_PER_FLOOR + 1; // 8 steps per floor
       const ANGLE_STEP = 0.38; // radians per step (~21.8 degrees)
-      const HEIGHT_STEP = FLOOR_HEIGHT / TOTAL_STEPS_PER_FLOOR; // 1.2m per step
+      const HEIGHT_STEP = FLOOR_HEIGHT / TOTAL_STEPS_PER_FLOOR; // 1.15m per step
 
-      // Tower Outer Frame (Stylized semi-transparent pillars)
-      const pillarGeo = new THREE.CylinderGeometry(0.3, 0.3, 125, 12);
+      // Tower Outer Frame (Stylized semi-transparent pillars for full 20 floors height)
+      const pillarGeo = new THREE.CylinderGeometry(0.35, 0.35, 220, 12);
       const pillarMat = new THREE.MeshBasicMaterial({ color: 0x1e293b, wireframe: true });
       for (let i = 0; i < 8; i++) {
         const angle = (i / 8) * Math.PI * 2;
         const p = new THREE.Mesh(pillarGeo, pillarMat);
-        p.position.set(Math.cos(angle) * (TOWER_RADIUS + 4.0), 55, Math.sin(angle) * (TOWER_RADIUS + 4.0));
+        p.position.set(Math.cos(angle) * (TOWER_RADIUS + 4.5), 105, Math.sin(angle) * (TOWER_RADIUS + 4.5));
         this.scene.add(p);
       }
 
       // Base bottom floor (Lava abyss at bottom)
-      const abyssGeo = new THREE.CircleGeometry(TOWER_RADIUS + 10, 32);
+      const abyssGeo = new THREE.CircleGeometry(TOWER_RADIUS + 14, 32);
       const abyssMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
       const abyss = new THREE.Mesh(abyssGeo, abyssMat);
       abyss.rotation.x = -Math.PI / 2;
       abyss.position.y = -2;
       this.scene.add(abyss);
-      this.addHazard(new THREE.Vector3(0, -1, 0), new THREE.Vector3(50, 1.5, 50));
+      this.addHazard(new THREE.Vector3(0, -1, 0), new THREE.Vector3(60, 1.5, 60));
 
-      // Floor themes definition
+      // Floor themes definition (20 floors in strictly ascending difficulty)
       const floorThemes = [
+        // --- Tier 1: Базовый паркур (Этажи 1–4) ---
         { name: 'Первые шаги', color: 0x22c55e, type: 'basic' },
+        { name: 'Широкие прыжки', color: 0x16a34a, type: 'steps' },
         { name: 'Лавовые полосы', color: 0xeab308, type: 'lava' },
+        { name: 'Двойная лава', color: 0xf59e0b, type: 'double_lava' },
+
+        // --- Tier 2: Исчезновение и Скольжение (Этажи 5–8) ---
         { name: 'Хрупкий мост', color: 0xf97316, type: 'vanishing' },
-        { name: 'Вращающийся луч', color: 0xef4444, type: 'spinner' },
+        { name: 'Быстрый распад', color: 0xe11d48, type: 'fast_vanishing' },
+        { name: 'Ледяные дорожки', color: 0x38bdf8, type: 'ice' },
+        { name: 'Лед и лава', color: 0x0284c7, type: 'ice_lava' },
+
+        // --- Tier 3: Прыжки и Движение (Этажи 9–12) ---
         { name: 'Прыжковые батуты', color: 0xa855f7, type: 'bouncers' },
-        { name: 'Ледяные дорожки', color: 0x3b82f6, type: 'ice' },
+        { name: 'Супер-батуты', color: 0x9333ea, type: 'high_bouncers' },
         { name: 'Живые платформы', color: 0x06b6d4, type: 'moving' },
-        { name: 'Лазерная решетка', color: 0xec4899, type: 'lasers' },
-        { name: 'Узкие тропы', color: 0x8b5cf6, type: 'narrow' },
-        { name: 'Финальный подъем', color: 0xfacc15, type: 'summit' }
+        { name: 'Встречный дрифт', color: 0x0891b2, type: 'fast_moving' },
+
+        // --- Tier 4: Точность и Лазеры (Этажи 13–16) ---
+        { name: 'Узкие тропы', color: 0x6366f1, type: 'narrow_beam' },
+        { name: 'Микро-столбики', color: 0x4f46e5, type: 'micro_columns' },
+        { name: 'Лазерные барьеры', color: 0xec4899, type: 'lasers' },
+        { name: 'Бегущие лазеры', color: 0xdb2777, type: 'fast_lasers' },
+
+        // --- Tier 5: Экстремальный хардкор (Этажи 17–20) ---
+        { name: 'Вращающийся луч', color: 0xef4444, type: 'spinner' },
+        { name: 'Двойные спиннеры', color: 0xdc2626, type: 'fast_spinner' },
+        { name: 'Хрупкие лучи', color: 0xb91c1c, type: 'vanishing_spinner' },
+        { name: 'Корона Башни', color: 0xfacc15, type: 'summit_rush' }
       ];
 
-      for (let floorIdx = 0; floorIdx < 10; floorIdx++) {
+      for (let floorIdx = 0; floorIdx < 20; floorIdx++) {
         const floorNum = floorIdx + 1;
         const theme = floorThemes[floorIdx];
         const globalStep = floorIdx * TOTAL_STEPS_PER_FLOOR;
@@ -525,8 +544,8 @@
         );
       }
 
-      // Summit on top of Floor 10 (at globalStep = 10 * 8 = 80)
-      const summitStep = 10 * TOTAL_STEPS_PER_FLOOR;
+      // Summit on top of Floor 20 (at globalStep = 20 * 8 = 160)
+      const summitStep = 20 * TOTAL_STEPS_PER_FLOOR;
       const summitAngle = summitStep * ANGLE_STEP;
       const summitY = summitStep * HEIGHT_STEP;
       const summitPos = new THREE.Vector3(
@@ -619,85 +638,148 @@
         switch (theme.type) {
           case 'basic': {
             // Gentle solid step platforms
-            this.addPlatform(pos, new THREE.Vector3(2.6, 0.6, 2.6), 0x22c55e);
+            this.addPlatform(pos, new THREE.Vector3(2.8, 0.6, 2.8), 0x22c55e);
+            break;
+          }
+
+          case 'steps': {
+            // Slightly smaller platforms for accuracy
+            this.addPlatform(pos, new THREE.Vector3(2.3, 0.6, 2.3), 0x16a34a);
             break;
           }
 
           case 'lava': {
-            // Platform with red hot lava stripe in center (except step 1 which is entry)
-            this.addPlatform(pos, new THREE.Vector3(3.0, 0.6, 2.4), 0x475569);
-            if (i > 1) {
-              const hazardPos = pos.clone().add(new THREE.Vector3(0, 0.35, 0));
-              this.addHazard(hazardPos, new THREE.Vector3(0.6, 0.25, 2.3));
-            }
+            // Platform with red hot lava stripe in center on EVERY platform
+            this.addPlatform(pos, new THREE.Vector3(3.2, 0.6, 2.4), 0x475569);
+            const hazardPos = pos.clone().add(new THREE.Vector3(0, 0.35, 0));
+            this.addHazard(hazardPos, new THREE.Vector3(0.65, 0.25, 2.3));
+            break;
+          }
+
+          case 'double_lava': {
+            // Platform with two lava stripes on EVERY platform
+            this.addPlatform(pos, new THREE.Vector3(3.6, 0.6, 2.5), 0x334155);
+            const h1 = pos.clone().add(new THREE.Vector3(-0.7, 0.35, 0));
+            const h2 = pos.clone().add(new THREE.Vector3(0.7, 0.35, 0));
+            this.addHazard(h1, new THREE.Vector3(0.4, 0.25, 2.4));
+            this.addHazard(h2, new THREE.Vector3(0.4, 0.25, 2.4));
             break;
           }
 
           case 'vanishing': {
-            // Disappearing orange platforms
-            this.addVanishingBlock(pos, new THREE.Vector3(2.6, 0.5, 2.6), 0xf97316);
+            // Disappearing orange platforms on EVERY platform
+            this.addVanishingBlock(pos, new THREE.Vector3(2.5, 0.5, 2.5), 0xf97316, 0.8, 2200);
             break;
           }
 
-          case 'spinner': {
-            // Circular platform + Rotating lethal beam
-            this.addPlatform(pos, new THREE.Vector3(3.0, 0.6, 3.0), 0x334155);
-            if (i % 2 === 0) {
-              this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.65, 0)), 3.4);
-            }
-            break;
-          }
-
-          case 'bouncers': {
-            // Launch pads that spring the player upward
-            if (i % 2 === 1) {
-              this.addLaunchPad(pos, new THREE.Vector3(2.4, 0.6, 2.4), 22);
-            } else {
-              this.addPlatform(pos, new THREE.Vector3(2.4, 0.6, 2.4), 0xa855f7);
-            }
+          case 'fast_vanishing': {
+            // Fast disappearing platforms on EVERY platform
+            this.addVanishingBlock(pos, new THREE.Vector3(2.2, 0.5, 2.2), 0xe11d48, 0.55, 2400);
             break;
           }
 
           case 'ice': {
-            // Low friction slippery ice blocks
-            this.addPlatform(pos, new THREE.Vector3(2.8, 0.5, 2.8), 0x93c5fd, true);
+            // Low friction slippery ice blocks on EVERY platform
+            this.addPlatform(pos, new THREE.Vector3(2.7, 0.5, 2.7), 0x7dd3fc, true);
+            break;
+          }
+
+          case 'ice_lava': {
+            // Slippery ice with lethal lava hazard on EVERY platform
+            this.addPlatform(pos, new THREE.Vector3(3.2, 0.5, 2.4), 0x0284c7, true);
+            const hazardPos = pos.clone().add(new THREE.Vector3(0, 0.32, 0));
+            this.addHazard(hazardPos, new THREE.Vector3(0.6, 0.25, 2.3));
+            break;
+          }
+
+          case 'bouncers': {
+            // Launch pads on EVERY platform - chained jumping
+            this.addLaunchPad(pos, new THREE.Vector3(2.5, 0.6, 2.5), 21.0);
+            break;
+          }
+
+          case 'high_bouncers': {
+            // High spring launch pads on EVERY platform
+            this.addLaunchPad(pos, new THREE.Vector3(2.2, 0.6, 2.2), 24.5);
             break;
           }
 
           case 'moving': {
-            // Platforms gliding horizontally
-            this.addMovingPlatform(pos, new THREE.Vector3(2.5, 0.6, 2.5), 0x06b6d4, curAngle);
+            // Platforms gliding horizontally on EVERY platform
+            this.addMovingPlatform(pos, new THREE.Vector3(2.5, 0.6, 2.5), 0x06b6d4, curAngle, 2.0, 1.4);
+            break;
+          }
+
+          case 'fast_moving': {
+            // Fast opposing moving platforms on EVERY platform
+            const phase = curAngle + (i % 2) * Math.PI;
+            this.addMovingPlatform(pos, new THREE.Vector3(2.3, 0.6, 2.3), 0x0891b2, phase, 2.6, 2.2);
+            break;
+          }
+
+          case 'narrow_beam': {
+            // Narrow balance beams on EVERY platform
+            this.addPlatform(pos, new THREE.Vector3(1.1, 0.5, 3.2), 0x6366f1);
+            break;
+          }
+
+          case 'micro_columns': {
+            // Small columns requiring exact landing on EVERY platform
+            this.addPlatform(pos, new THREE.Vector3(1.4, 0.6, 1.4), 0x4f46e5);
             break;
           }
 
           case 'lasers': {
-            // Platforms with pulsating on/off lasers
+            // Platforms with pulsating lasers on EVERY platform
             this.addPlatform(pos, new THREE.Vector3(2.8, 0.6, 2.8), 0x475569);
-            if (i % 2 === 0) {
-              this.addPulsingLaser(pos.clone().add(new THREE.Vector3(0, 0.75, 0)), 2.6);
-            }
+            this.addPulsingLaser(pos.clone().add(new THREE.Vector3(0, 0.75, 0)), 2.6, 1.5, (i % 3) * 0.5);
             break;
           }
 
-          case 'narrow': {
-            // Narrow balance beams & small cylinders
-            const isBeam = i % 2 === 0;
-            const size = isBeam ? new THREE.Vector3(1.1, 0.5, 3.0) : new THREE.Vector3(1.6, 0.5, 1.6);
-            this.addPlatform(pos, size, 0x8b5cf6);
+          case 'fast_lasers': {
+            // Fast pulsating lasers on EVERY platform
+            this.addPlatform(pos, new THREE.Vector3(2.6, 0.6, 2.6), 0x334155);
+            this.addPulsingLaser(pos.clone().add(new THREE.Vector3(0, 0.75, 0)), 2.5, 0.9, (i % 2) * 0.45);
             break;
           }
 
-          case 'summit': {
-            // Combination gauntlet on final approach
+          case 'spinner': {
+            // Rotating lethal beam on EVERY platform
+            this.addPlatform(pos, new THREE.Vector3(3.2, 0.6, 3.2), 0x334155);
+            this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.65, 0)), 3.4, 1.8);
+            break;
+          }
+
+          case 'fast_spinner': {
+            // Fast rotating beam on EVERY platform
+            this.addPlatform(pos, new THREE.Vector3(3.0, 0.6, 3.0), 0x1e293b);
+            this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.65, 0)), 3.2, 2.6);
+            break;
+          }
+
+          case 'vanishing_spinner': {
+            // Disappearing platform + rotating beam on EVERY platform
+            this.addVanishingBlock(pos, new THREE.Vector3(3.0, 0.5, 3.0), 0xd97706, 0.9, 2400);
+            this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.65, 0)), 3.1, 2.2);
+            break;
+          }
+
+          case 'summit_rush': {
+            // Grand finale gauntlet leading to the Golden Crown
             if (i === 1) this.addPlatform(pos, new THREE.Vector3(2.6, 0.6, 2.6), 0xfacc15);
-            else if (i === 2) this.addVanishingBlock(pos, new THREE.Vector3(2.4, 0.5, 2.4), 0xfacc15);
-            else if (i === 3) this.addLaunchPad(pos, new THREE.Vector3(2.4, 0.6, 2.4), 20);
-            else if (i === 4) {
+            else if (i === 2) this.addVanishingBlock(pos, new THREE.Vector3(2.4, 0.5, 2.4), 0xfacc15, 0.7);
+            else if (i === 3) this.addLaunchPad(pos, new THREE.Vector3(2.4, 0.6, 2.4), 21.0);
+            else if (i === 4) this.addMovingPlatform(pos, new THREE.Vector3(2.5, 0.6, 2.5), 0xfacc15, curAngle, 2.4, 2.0);
+            else if (i === 5) {
+              this.addPlatform(pos, new THREE.Vector3(2.8, 0.6, 2.8), 0x334155);
+              this.addPulsingLaser(pos.clone().add(new THREE.Vector3(0, 0.75, 0)), 2.6, 1.1, 0);
+            } else if (i === 6) {
               this.addPlatform(pos, new THREE.Vector3(3.0, 0.6, 3.0), 0x334155);
-              this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.65, 0)), 3.2);
-            } else if (i === 5) this.addVanishingBlock(pos, new THREE.Vector3(2.4, 0.5, 2.4), 0xfacc15);
-            else if (i === 6) this.addMovingPlatform(pos, new THREE.Vector3(2.5, 0.6, 2.5), 0x06b6d4, curAngle);
-            else this.addLaunchPad(pos, new THREE.Vector3(2.6, 0.6, 2.6), 22);
+              this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.65, 0)), 3.2, 2.4);
+            } else {
+              // Super bounce catapulting onto Summit!
+              this.addLaunchPad(pos, new THREE.Vector3(2.8, 0.6, 2.8), 24.0);
+            }
             break;
           }
         }
@@ -813,7 +895,7 @@
       });
     }
 
-    addVanishingBlock(pos, size, colorHex) {
+    addVanishingBlock(pos, size, colorHex, vanishDelay = 0.75, reappearDelay = 2200) {
       const plat = this.addPlatform(pos, size, colorHex);
       plat.mesh.material.transparent = true;
       plat.mesh.material.opacity = 1;
@@ -823,11 +905,13 @@
         stepped: false,
         steppedTime: 0,
         active: true,
-        reappearTime: 0
+        reappearTime: 0,
+        vanishDelay,
+        reappearDelay
       });
     }
 
-    addSpinningBeam(pos, length) {
+    addSpinningBeam(pos, length, speed = 2.0) {
       const geo = new THREE.CylinderGeometry(0.18, 0.18, length, 12);
       const mat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
       const mesh = new THREE.Mesh(geo, mat);
@@ -839,24 +923,24 @@
         mesh,
         pos,
         length,
-        speed: 1.8 + Math.random() * 0.8,
+        speed,
         angle: Math.random() * Math.PI
       });
     }
 
-    addMovingPlatform(pos, size, colorHex, angleOffset) {
+    addMovingPlatform(pos, size, colorHex, angleOffset, amplitude = 2.2, speed = 1.6) {
       const plat = this.addPlatform(pos, size, colorHex);
       this.movingPlatforms.push({
         plat,
         origin: pos.clone(),
-        amplitude: 2.2,
-        speed: 1.6,
+        amplitude,
+        speed,
         phase: angleOffset,
         lastOffset: new THREE.Vector3()
       });
     }
 
-    addPulsingLaser(pos, width) {
+    addPulsingLaser(pos, width, interval = 1.4, initialOffset = 0) {
       const geo = new THREE.BoxGeometry(width, 0.2, 0.2);
       const mat = new THREE.MeshBasicMaterial({ color: 0xff0055, transparent: true, opacity: 0.9 });
       const mesh = new THREE.Mesh(geo, mat);
@@ -868,7 +952,8 @@
         pos,
         width,
         state: 'on',
-        timer: Math.random() * 2
+        interval,
+        timer: initialOffset
       });
     }
 
@@ -1228,7 +1313,7 @@
       };
 
       document.getElementById('final-time').textContent = formatTime(elapsedSec);
-      document.getElementById('final-coins').textContent = `${this.coins} / 20`;
+      document.getElementById('final-coins').textContent = `${this.coins} / 40`;
       document.getElementById('final-deaths').textContent = this.deaths;
       document.getElementById('best-time').textContent = formatTime(this.bestTime);
       document.getElementById('victory-modal').classList.add('active');
@@ -1488,14 +1573,15 @@
         const vb = this.vanishingBlocks[i];
         if (vb.stepped && vb.active) {
           const elapsed = (now - vb.steppedTime) / 1000;
-          if (elapsed < 0.6) {
+          const vanishDelay = vb.vanishDelay || 0.75;
+          if (elapsed < vanishDelay) {
             // Flash
             vb.plat.mesh.material.opacity = Math.sin(elapsed * 25) > 0 ? 0.3 : 0.9;
           } else {
             // Vanish
             vb.active = false;
             vb.plat.mesh.visible = false;
-            vb.reappearTime = now + 2400;
+            vb.reappearTime = now + (vb.reappearDelay || 2200);
             // Move bounding box away
             vb.plat.min.set(0, -999, 0);
             vb.plat.max.set(0, -999, 0);
@@ -1517,7 +1603,8 @@
       for (let i = 0; i < this.pulsingLasers.length; i++) {
         const laser = this.pulsingLasers[i];
         laser.timer += dt;
-        if (laser.timer > 1.4) {
+        const interval = laser.interval || 1.4;
+        if (laser.timer > interval) {
           laser.timer = 0;
           laser.state = laser.state === 'on' ? 'off' : 'on';
           laser.mesh.material.color.setHex(laser.state === 'on' ? 0xff0055 : 0x1e293b);
