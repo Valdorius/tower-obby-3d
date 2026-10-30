@@ -657,13 +657,19 @@
           }
 
           case 'lava_cross': {
-            // Platform with a lethal red-hot lava cross '+' on EVERY platform
-            this.addPlatform(pos, new THREE.Vector3(3.4, 0.6, 3.4), 0x334155);
-            const crossCenter = pos.clone().add(new THREE.Vector3(0, 0.35, 0));
+            // Platform with a prominent glowing lava cross '+' on EVERY platform
+            this.addPlatform(pos, new THREE.Vector3(3.6, 0.6, 3.6), 0x1e293b);
+            const crossCenter = pos.clone().add(new THREE.Vector3(0, 0.36, 0));
             // Arm 1 (along X)
-            this.addHazard(crossCenter, new THREE.Vector3(3.3, 0.25, 0.6));
+            this.addHazard(crossCenter, new THREE.Vector3(3.5, 0.32, 0.75), 0xff1100);
             // Arm 2 (along Z)
-            this.addHazard(crossCenter, new THREE.Vector3(0.6, 0.25, 3.3));
+            this.addHazard(crossCenter, new THREE.Vector3(0.75, 0.32, 3.5), 0xff1100);
+            // Glowing fiery yellow core in intersection
+            const coreGeo = new THREE.BoxGeometry(0.8, 0.35, 0.8);
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+            const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+            coreMesh.position.copy(crossCenter);
+            this.scene.add(coreMesh);
             break;
           }
 
@@ -864,9 +870,9 @@
       return plat;
     }
 
-    addHazard(pos, size) {
+    addHazard(pos, size, colorHex = 0xff0000) {
       const geo = new THREE.BoxGeometry(size.x, size.y, size.z);
-      const mat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const mat = new THREE.MeshBasicMaterial({ color: colorHex });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.copy(pos);
       this.scene.add(mesh);
