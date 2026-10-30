@@ -637,6 +637,12 @@
         const pz = Math.sin(curAngle) * radius;
         const pos = new THREE.Vector3(px, y, pz);
 
+        const nextStep = curStep + 1;
+        const nextAngle = nextStep * angleStep;
+        const nextPx = Math.cos(nextAngle) * radius;
+        const nextPz = Math.sin(nextAngle) * radius;
+        const forwardDir = new THREE.Vector3(nextPx - px, 0, nextPz - pz).normalize();
+
         if (i === 4) {
           // Extra coin on midway of the stage
           this.createCoin(pos.clone().add(new THREE.Vector3(0, 1.4, 0)));
@@ -752,14 +758,14 @@
           case 'lasers': {
             // Full-fledged laser fence hurdle across EVERY platform
             this.addPlatform(pos, new THREE.Vector3(3.0, 0.6, 3.0), 0x334155);
-            this.addLaserFence(pos, 2.7, 0.85, curAngle, 0, 0);
+            this.addLaserFence(pos, 2.7, 0.85, forwardDir, 0, 0);
             break;
           }
 
           case 'fast_lasers': {
             // Fast rhythmic laser fence hurdles on EVERY platform
             this.addPlatform(pos, new THREE.Vector3(2.8, 0.6, 2.8), 0x1e293b);
-            this.addLaserFence(pos, 2.5, 0.92, curAngle, 1.2, (i % 3) * 0.4);
+            this.addLaserFence(pos, 2.5, 0.92, forwardDir, 1.2, (i % 3) * 0.4);
             break;
           }
 
@@ -792,7 +798,7 @@
             else if (i === 4) this.addMovingPlatform(pos, new THREE.Vector3(2.5, 0.6, 2.5), 0xfacc15, curAngle, 2.4, 2.0);
             else if (i === 5) {
               this.addPlatform(pos, new THREE.Vector3(2.8, 0.6, 2.8), 0x334155);
-              this.addLaserFence(pos, 2.5, 0.90, curAngle, 1.3, 0);
+              this.addLaserFence(pos, 2.5, 0.90, forwardDir, 1.3, 0);
             } else if (i === 6) {
               this.addPlatform(pos, new THREE.Vector3(3.2, 0.6, 3.2), 0x334155);
               this.addSpinningBeam(pos.clone().add(new THREE.Vector3(0, 0.52, 0)), 3.0, 2.2);
@@ -1045,10 +1051,15 @@
       });
     }
 
-    addLaserFence(pos, width, height = 0.9, angle = 0, interval = 0, initialOffset = 0) {
+    addLaserFence(pos, width, height = 0.9, forwardDir = null, interval = 0, initialOffset = 0) {
       const group = new THREE.Group();
       group.position.copy(pos);
-      group.rotation.y = angle;
+      if (forwardDir && forwardDir.isVector3) {
+        group.lookAt(pos.x + forwardDir.x, pos.y, pos.z + forwardDir.z);
+      } else if (typeof forwardDir === 'number') {
+        group.rotation.y = forwardDir;
+      }
+      group.updateMatrixWorld(true);
       this.scene.add(group);
 
       // Platform top is at local Y = +0.3 (since platform is 0.6 thick centered at pos.y)
@@ -1662,14 +1673,45 @@
         wishDir.addScaledVector(forward, -moveZ / Math.max(1, len));
       }
 
-      // 3. Horizontal acceleration
-      const accel = this.isGrounded ? 45.0 : 25.0;
+      // 3. Horizontal acceleration & ice physics
+      const isOnIce = !!(this.currentGround && this.currentGround.isIce);
       const targetVx = wishDir.x * maxSpeed;
       const targetVz = wishDir.z * maxSpeed;
 
-      const friction = this.currentGround && this.currentGround.isIce ? 0.03 : this.groundFriction;
-      this.playerVel.x = THREE.MathUtils.lerp(this.playerVel.x, targetVx, accel * dt * friction);
-      this.playerVel.z = THREE.MathUtils.lerp(this.playerVel.z, targetVz, accel * dt * friction);
+      if (this.isGrounded) {
+        if (isOnIce) {
+          // --- ICE GROUND PHYSICS (SLIPPERY & GLIDING) ---
+          if (len > 0.05) {
+            // Slippery acceleration: takes longer to change direction or gain speed
+            this.playerVel.x = THREE.MathUtils.lerp(this.playerVel.x, targetVx, 3.2 * dt);
+            this.playerVel.z = THREE.MathUtils.lerp(this.playerVel.z, targetVz, 3.2 * dt);
+          } else {
+            // Ultra-low deceleration: player glides and slides across the ice!
+            this.playerVel.x = THREE.MathUtils.lerp(this.playerVel.x, 0, 0.40 * dt);
+            this.playerVel.z = THREE.MathUtils.lerp(this.playerVel.z, 0, 0.40 * dt);
+          }
+        } else {
+          // --- NORMAL GROUND PHYSICS ---
+          if (len > 0.05) {
+            this.playerVel.x = THREE.MathUtils.lerp(this.playerVel.x, targetVx, 45.0 * dt);
+            this.playerVel.z = THREE.MathUtils.lerp(this.playerVel.z, targetVz, 45.0 * dt);
+          } else {
+            this.playerVel.x = THREE.MathUtils.lerp(this.playerVel.x, 0, 24.0 * dt);
+            this.playerVel.z = THREE.MathUtils.lerp(this.playerVel.z, 0, 24.0 * dt);
+          }
+        }
+      } else {
+        // --- IN-AIR PHYSICS (PRESERVES JUMP & SLIDE MOMENTUM!) ---
+        if (len > 0.05) {
+          // Subtle air steering without killing existing velocity
+          this.playerVel.x = THREE.MathUtils.lerp(this.playerVel.x, targetVx, 5.0 * dt);
+          this.playerVel.z = THREE.MathUtils.lerp(this.playerVel.z, targetVz, 5.0 * dt);
+        } else {
+          // Air resistance is near-zero: preserve full jump momentum across!
+          this.playerVel.x = THREE.MathUtils.lerp(this.playerVel.x, 0, 0.15 * dt);
+          this.playerVel.z = THREE.MathUtils.lerp(this.playerVel.z, 0, 0.15 * dt);
+        }
+      }
 
       // 4. Gravity
       this.playerVel.y -= 28.0 * dt;
@@ -1681,6 +1723,8 @@
       this.playerPos.y += this.playerVel.y * dt;
 
       // 6. Collision with Platforms
+      const wasInAir = !this.isGrounded;
+      const prevVelY = this.playerVel.y;
       this.isGrounded = false;
       this.currentGround = null;
       const pBox = {
@@ -1706,6 +1750,28 @@
             this.playerVel.y = 0;
             this.isGrounded = true;
             this.currentGround = plat;
+
+            // --- SPECIAL ICE LANDING: Slide from jumps onto ice ---
+            if (plat.isIce && wasInAir) {
+              const horizSpeed = Math.sqrt(
+                this.playerVel.x * this.playerVel.x + this.playerVel.z * this.playerVel.z
+              );
+              if (horizSpeed > 0.4) {
+                // Landing from a jump onto ice carries forward sliding momentum!
+                const impactFactor = Math.min(1.25, 1.05 + Math.abs(prevVelY) * 0.015);
+                this.playerVel.x *= impactFactor;
+                this.playerVel.z *= impactFactor;
+              } else if (wishDir.lengthSq() > 0.001) {
+                // Player was holding direction on landing: immediately launch into a fast slide!
+                this.playerVel.x = wishDir.x * maxSpeed * 0.85;
+                this.playerVel.z = wishDir.z * maxSpeed * 0.85;
+              } else {
+                // Landing vertically on ice: give a subtle forward slide in view direction
+                const viewForward = new THREE.Vector3(-Math.sin(this.cameraYaw), 0, -Math.cos(this.cameraYaw));
+                this.playerVel.x += viewForward.x * 2.8;
+                this.playerVel.z += viewForward.z * 2.8;
+              }
+            }
 
             // Check if checkpoint reached
             if (plat.tag && plat.tag.startsWith('checkpoint_')) {
@@ -1761,43 +1827,30 @@
         }
       }
 
-      // 10. Check Spinning Beams (Accurate Line Segment vs Player Cylinder)
+      // 10. Check Spinning Beams (Accurate Line Segment vs Player Cylinder via worldToLocal)
       for (let i = 0; i < this.spinningBeams.length; i++) {
         const sb = this.spinningBeams[i];
-        // Vertical check: Beam is at sb.pos.y with thickness 0.24 (half-height 0.12)
-        const beamTop = sb.pos.y + 0.14;
-        const beamBottom = sb.pos.y - 0.14;
 
-        // Player feet are at playerPos.y, head at playerPos.y + 1.8
+        // Transform player position directly into local space of the rotating beam group:
+        const localPos = sb.group.worldToLocal(this.playerPos.clone());
+
+        // Inside sb.group, the beam bar is at Y = 0 with thickness 0.24 (half-height 0.12)
+        // Player feet are at localPos.y, head at localPos.y + 1.8
         // If jumping over beam (feet above beam top):
-        if (this.playerPos.y >= beamTop - 0.04) {
+        if (localPos.y >= 0.14 - 0.04) {
           continue; // Clean jump over the beam!
         }
         // If player is entirely below beam:
-        if (this.playerPos.y + 1.8 <= beamBottom) {
+        if (localPos.y + 1.8 <= -0.14) {
           continue;
         }
 
-        // Horizontal line segment check:
-        // sb.group.rotation.y = sb.angle.
-        // Bar lies along local X axis inside group:
-        const dirX = Math.cos(sb.angle);
-        const dirZ = -Math.sin(sb.angle);
-
-        const dx = this.playerPos.x - sb.pos.x;
-        const dz = this.playerPos.z - sb.pos.z;
-
-        // Project player offset onto bar direction
-        const proj = dx * dirX + dz * dirZ;
+        // Inside sb.group, the bar lies along local X from -sb.length/2 to +sb.length/2:
         const halfL = sb.length / 2;
-        const clampedProj = Math.max(-halfL, Math.min(halfL, proj));
+        const clampedX = Math.max(-halfL, Math.min(halfL, localPos.x));
 
-        // Closest point on the physical bar
-        const closeX = sb.pos.x + clampedProj * dirX;
-        const closeZ = sb.pos.z + clampedProj * dirZ;
-
-        const distX = this.playerPos.x - closeX;
-        const distZ = this.playerPos.z - closeZ;
+        const distX = localPos.x - clampedX;
+        const distZ = localPos.z;
         const distSq = distX * distX + distZ * distZ;
 
         // Hit radius: forgiving 0.38m
@@ -1807,35 +1860,31 @@
         }
       }
 
-      // 11. Check Laser Fences (Full-fledged Barrier Hurdles)
+      // 11. Check Laser Fences (Full-fledged Barrier Hurdles via worldToLocal)
       for (let i = 0; i < this.laserFences.length; i++) {
         const lf = this.laserFences[i];
         if (lf.state !== 'on') continue;
 
-        // Vertical clearance: can player jump over?
+        // Transform player position directly into local space of the fence group:
+        const localPos = lf.group.worldToLocal(this.playerPos.clone());
+
+        // Inside lf.group:
+        // Platform floor is at local Y = 0.3
+        // Fence top is at local Y = 0.3 + lf.height
         // If feet are above fence top:
-        if (this.playerPos.y >= lf.topY - 0.05) {
+        if (localPos.y >= 0.3 + lf.height - 0.05) {
           continue; // Successfully leaped over the hurdle!
         }
-        // If player is below platform:
-        if (this.playerPos.y + 1.8 <= lf.floorY) {
+        // If player is below platform floor:
+        if (localPos.y + 1.8 <= 0.3) {
           continue;
         }
 
-        // Horizontal distance relative to fence plane
-        const dx = this.playerPos.x - lf.pos.x;
-        const dz = this.playerPos.z - lf.pos.z;
-
-        // Distance along fence axis (local X):
-        const along = dx * Math.cos(lf.angle) + dz * Math.sin(lf.angle);
-        // Distance across fence plane (local Z):
-        const across = -dx * Math.sin(lf.angle) + dz * Math.cos(lf.angle);
-
         const halfW = lf.width / 2;
-        // Check if player is between the fence posts
-        if (Math.abs(along) <= halfW + 0.15) {
-          // Check if player intersects the laser fence plane
-          if (Math.abs(across) < 0.38) {
+        // Check if player is between the fence posts (along local X)
+        if (Math.abs(localPos.x) <= halfW + 0.15) {
+          // Check if player intersects the laser fence plane (along local Z)
+          if (Math.abs(localPos.z) < 0.35) {
             this.onDeath();
             return;
           }
@@ -1882,6 +1931,7 @@
         const sb = this.spinningBeams[i];
         sb.angle += sb.speed * dt;
         sb.group.rotation.y = sb.angle;
+        sb.group.updateMatrixWorld(true);
       }
 
       // Moving platforms
