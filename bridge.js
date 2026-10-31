@@ -165,15 +165,52 @@
           }
         }
 
-        // Submit score to Leaderboard
+        // Submit score to Platform Leaderboard
         if (typeof bestTime === 'number' && bestTime > 0 && this.isReady && window.bridge && window.bridge.leaderboards) {
-          // Playgama score integer (milliseconds or hundredths: e.g. 12.34s -> 1234)
+          // Playgama score integer (hundredths of a second: e.g. 12.34s -> 1234)
           const score = Math.round(bestTime * 100);
-          window.bridge.leaderboards.setScore('tower_best_time', score).catch(() => {});
+          window.bridge.leaderboards.setScore('tower_best_time', score).catch((err) => {
+            console.warn('[Playgama Bridge] Leaderboard setScore notice:', err);
+          });
         }
       } catch (e) {
         console.warn('Failed saving progress', e);
       }
+    }
+
+    getLeaderboardType() {
+      if (this.isReady && window.bridge && window.bridge.leaderboards) {
+        return window.bridge.leaderboards.type || 'not_available';
+      }
+      return 'not_available';
+    }
+
+    async showLeaderboard() {
+      const type = this.getLeaderboardType();
+      if (type === 'native_popup') {
+        try {
+          await window.bridge.leaderboards.showNativePopup('tower_best_time');
+          return { type: 'native_popup', success: true };
+        } catch (err) {
+          console.warn('[Playgama Bridge] showNativePopup error:', err);
+          return { type: 'native_popup', success: false, error: err };
+        }
+      } else if (type === 'in_game') {
+        try {
+          const raw = await window.bridge.leaderboards.getEntries('tower_best_time');
+          let entries = [];
+          if (Array.isArray(raw)) {
+            entries = raw;
+          } else if (raw && Array.isArray(raw.entries)) {
+            entries = raw.entries;
+          }
+          return { type: 'in_game', success: true, entries };
+        } catch (err) {
+          console.warn('[Playgama Bridge] getEntries error:', err);
+          return { type: 'in_game', success: false, error: err };
+        }
+      }
+      return { type: 'not_available' };
     }
 
     loadLocalProgress() {

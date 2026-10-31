@@ -355,6 +355,9 @@
         if (e.code === 'Space') {
           this.triggerJump();
         }
+        if (e.code === 'Escape') {
+          this.closeLeaderboard();
+        }
       });
 
       window.addEventListener('keyup', (e) => {
@@ -640,6 +643,49 @@
           this.resetGame();
         });
       }
+
+      // Leaderboard buttons & modal
+      const lbBtn = document.getElementById('leaderboard-btn');
+      if (lbBtn) {
+        const handleLbClick = (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          this.sound.ensureContext();
+          this.openLeaderboard();
+        };
+        lbBtn.addEventListener('click', handleLbClick);
+        lbBtn.addEventListener('touchend', handleLbClick);
+      }
+
+      const victoryLbBtn = document.getElementById('victory-leaderboard-btn');
+      if (victoryLbBtn) {
+        victoryLbBtn.addEventListener('click', (e) => {
+          if (e) e.preventDefault();
+          this.sound.ensureContext();
+          this.openLeaderboard();
+        });
+      }
+
+      const closeLbX = document.getElementById('close-leaderboard-x');
+      if (closeLbX) {
+        closeLbX.addEventListener('click', () => this.closeLeaderboard());
+      }
+
+      const closeLbBtn = document.getElementById('close-leaderboard-btn');
+      if (closeLbBtn) {
+        closeLbBtn.addEventListener('click', () => this.closeLeaderboard());
+      }
+
+      const lbModal = document.getElementById('leaderboard-modal');
+      if (lbModal) {
+        lbModal.addEventListener('click', (e) => {
+          if (e.target === lbModal) {
+            this.closeLeaderboard();
+          }
+        });
+      }
     }
 
     isFullscreen() {
@@ -732,6 +778,138 @@
       setTimeout(doResize, 100);
       setTimeout(doResize, 350);
       setTimeout(doResize, 800);
+    }
+
+    // --- LEADERBOARD & MODAL LOGIC ---
+    formatTime(sec) {
+      if (typeof sec !== 'number' || isNaN(sec) || sec <= 0) return '--:--.-';
+      const m = Math.floor(sec / 60);
+      const s = (sec % 60).toFixed(1);
+      return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    async openLeaderboard() {
+      const modal = document.getElementById('leaderboard-modal');
+      const content = document.getElementById('leaderboard-content');
+      const myRecordEl = document.getElementById('my-record-time');
+
+      if (myRecordEl) {
+        myRecordEl.textContent = this.formatTime(this.bestTime);
+      }
+
+      const type = this.bridge.getLeaderboardType();
+
+      // For native popup platforms (e.g. VK Play)
+      if (type === 'native_popup') {
+        const res = await this.bridge.showLeaderboard();
+        if (res.success) {
+          return;
+        }
+      }
+
+      // Show in-game leaderboard modal
+      if (modal) modal.classList.add('active');
+
+      if (!content) return;
+
+      if (type === 'in_game') {
+        content.innerHTML = '<div class="lb-loading-state">⏳ Загрузка таблицы лидеров платформы...</div>';
+        try {
+          const res = await this.bridge.showLeaderboard();
+          let list = [];
+          if (res && res.success) {
+            if (Array.isArray(res.entries)) list = res.entries;
+            else if (res.entries && Array.isArray(res.entries.entries)) list = res.entries.entries;
+          }
+
+          if (list.length > 0) {
+            let html = `
+              <table class="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Игрок</th>
+                    <th style="text-align:right">Время</th>
+                  </tr>
+                </thead>
+                <tbody>
+            `;
+            list.forEach((entry, idx) => {
+              const rank = entry.rank || idx + 1;
+              let rankClass = '';
+              let medal = String(rank);
+              if (rank === 1) { rankClass = 'lb-gold'; medal = '🥇 1'; }
+              else if (rank === 2) { rankClass = 'lb-silver'; medal = '🥈 2'; }
+              else if (rank === 3) { rankClass = 'lb-bronze'; medal = '🥉 3'; }
+
+              const name = entry.name || (entry.player && (entry.player.name || entry.player.publicName)) || `Игрок #${rank}`;
+              const photo = entry.photo || (entry.player && (entry.player.avatar || (Array.isArray(entry.player.photos) && entry.player.photos[0]))) || '';
+              const scoreSec = typeof entry.score === 'number' ? entry.score / 100 : null;
+              const formattedScore = scoreSec !== null ? this.formatTime(scoreSec) : (entry.formattedScore || '--:--.-');
+
+              html += `
+                <tr>
+                  <td class="lb-rank ${rankClass}">${medal}</td>
+                  <td>
+                    <div class="lb-player-cell">
+                      ${photo ? `<img class="lb-avatar" src="${this.escapeHtml(photo)}" alt="" onerror="this.style.display='none'">` : ''}
+                      <span>${this.escapeHtml(name)}</span>
+                    </div>
+                  </td>
+                  <td class="lb-score">${this.escapeHtml(formattedScore)}</td>
+                </tr>
+              `;
+            });
+            html += '</tbody></table>';
+            content.innerHTML = html;
+          } else {
+            content.innerHTML = `
+              <div class="lb-platform-info">
+                <div class="lb-icon">🏁</div>
+                <h3>Таблица Лидеров</h3>
+                <p>Вы пока первый претендент на рекорд! Покорите вершину Башни, чтобы зафиксировать своё лучшее время.</p>
+              </div>
+            `;
+          }
+        } catch (err) {
+          content.innerHTML = `
+            <div class="lb-platform-info">
+              <div class="lb-icon">⚠️</div>
+              <h3>Ошибка загрузки</h3>
+              <p>Не удалось получить данные с сервера лидеров платформы. Попробуйте снова чуть позже.</p>
+            </div>
+          `;
+        }
+      } else {
+        // 'not_available' (GitHub Pages or standalone browser)
+        content.innerHTML = `
+          <div class="lb-platform-info">
+            <div class="lb-icon">🏆</div>
+            <h3>Платформенная Таблица Лидеров</h3>
+            <p>
+              Официальный рейтинг и соревнование с другими игроками синхронизируются через <strong>Playgama Bridge</strong> на платформах <strong>Яндекс Игры</strong> и <strong>VK Play</strong>.
+            </p>
+            <div class="lb-status-badge">
+              ✓ Интеграция API Playgama v2.4.0 подключена
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    closeLeaderboard() {
+      const modal = document.getElementById('leaderboard-modal');
+      if (modal) modal.classList.remove('active');
     }
 
     // --- PHYSICS ENGINE & SUBSTEPPING (No Tunneling) ---

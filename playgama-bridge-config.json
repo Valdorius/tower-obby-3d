@@ -24,7 +24,12 @@
       ]
     }
   },
-  "leaderboards": {
-    "default": "tower_best_time"
-  }
+  "leaderboards": [
+    {
+      "id": "tower_best_time",
+      "isMain": true,
+      "yandex": "tower_best_time",
+      "vk": "tower_best_time"
+    }
+  ]
 }

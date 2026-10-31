@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Башня Обби 3D (Tower of Obby)</title>
-  <link rel="stylesheet" href="style.css?v=4.0">
+  <link rel="stylesheet" href="style.css?v=4.2">
   <!-- Three.js 3D Engine (Bundled locally for 100% reliability) -->
   <script src="three.min.js"></script>
   <!-- Playgama Bridge SDK (Bundled locally) -->
@@ -36,6 +36,10 @@
       <div class="hud-panel">
         <button id="skip-btn" class="hud-btn skip-btn" title="Пропустить сложный этаж">
           <span>⏩ Пропустить (+📺)</span>
+        </button>
+        <button id="leaderboard-btn" class="hud-btn" title="Таблица лидеров платформы">
+          <span>🏆</span>
+          <span class="btn-label">Лидеры</span>
         </button>
         <button id="fullscreen-btn" class="hud-btn" title="Полноэкранный режим">
           <span id="fullscreen-icon">⛶</span>
@@ -106,17 +110,39 @@
 
       <div class="modal-actions">
         <button id="double-coins-btn" class="btn-rewarded">🎁 Удвоить Монеты (x2) (+📺)</button>
+        <button id="victory-leaderboard-btn" class="btn-secondary">🏆 Таблица Лидеров</button>
         <button id="restart-game-btn" class="btn-primary">Сыграть Снова 🚀</button>
       </div>
     </div>
   </div>
 
+  <!-- Platform Leaderboard Modal -->
+  <div id="leaderboard-modal" class="modal-overlay">
+    <div class="modal-card leaderboard-card">
+      <div class="modal-header-row">
+        <h2>🏆 Таблица Лидеров</h2>
+        <button id="close-leaderboard-x" class="modal-close-btn" title="Закрыть">✕</button>
+      </div>
+
+      <div id="leaderboard-content" class="leaderboard-scroll-area">
+        <!-- Content will be injected dynamically (in_game entries, loading state, or platform notice) -->
+      </div>
+
+      <div class="my-record-box">
+        <span class="my-record-title">Ваш рекорд времени:</span>
+        <span class="my-record-val" id="my-record-time">--:--.-</span>
+      </div>
+
+      <button id="close-leaderboard-btn" class="btn-primary">Закрыть</button>
+    </div>
+  </div>
+
   <!-- Modular Game Architecture -->
-  <script src="constants.js?v=4.0"></script>
-  <script src="sound.js?v=4.0"></script>
-  <script src="bridge.js?v=4.0"></script>
-  <script src="character.js?v=4.0"></script>
-  <script src="tower.js?v=4.1"></script>
-  <script src="game.js?v=4.0"></script>
+  <script src="constants.js?v=4.2"></script>
+  <script src="sound.js?v=4.2"></script>
+  <script src="bridge.js?v=4.2"></script>
+  <script src="character.js?v=4.2"></script>
+  <script src="tower.js?v=4.2"></script>
+  <script src="game.js?v=4.2"></script>
 </body>
 </html>
