@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Башня Обби 3D (Tower of Obby)</title>
-  <link rel="stylesheet" href="style.css?v=4.2">
+  <title data-i18n="gameTitle">Башня Обби 3D (Tower of Obby)</title>
+  <link rel="stylesheet" href="style.css?v=4.3">
   <!-- Three.js 3D Engine (Bundled locally for 100% reliability) -->
   <script src="three.min.js"></script>
   <!-- Playgama Bridge SDK (Bundled locally) -->
@@ -34,22 +34,26 @@
       </div>
 
       <div class="hud-panel">
-        <button id="skip-btn" class="hud-btn skip-btn" title="Пропустить сложный этаж">
-          <span>⏩ Пропустить (+📺)</span>
+        <button id="skip-btn" class="hud-btn skip-btn" data-i18n-title="skipFloorTitle" title="Пропустить сложный этаж">
+          <span data-i18n="skipFloor">⏩ Пропустить (+📺)</span>
         </button>
-        <button id="leaderboard-btn" class="hud-btn" title="Таблица лидеров платформы">
+        <button id="leaderboard-btn" class="hud-btn" data-i18n-title="leaderboardTitle" title="Таблица лидеров платформы">
           <span>🏆</span>
-          <span class="btn-label">Лидеры</span>
+          <span class="btn-label" data-i18n="leaderboard">Лидеры</span>
         </button>
-        <button id="fullscreen-btn" class="hud-btn" title="Полноэкранный режим">
+        <button id="lang-btn" class="hud-btn" data-i18n-title="switchLangTitle" title="Сменить язык / Switch language">
+          <span id="lang-label" class="btn-label" data-i18n="langLabel">🌐 RU</span>
+          <span id="lang-short" class="btn-short" data-i18n="langShort">RU</span>
+        </button>
+        <button id="fullscreen-btn" class="hud-btn" data-i18n-title="fullscreenTitle" title="Полноэкранный режим">
           <span id="fullscreen-icon">⛶</span>
-          <span id="fullscreen-text" class="btn-label">Экран</span>
+          <span id="fullscreen-text" class="btn-label" data-i18n="fullscreenFull">Экран</span>
         </button>
-        <button id="mute-btn" class="hud-btn" title="Вкл/Выкл звук">
+        <button id="mute-btn" class="hud-btn" data-i18n-title="muteTitle" title="Вкл/Выкл звук">
           <span id="mute-icon">🔊</span>
         </button>
-        <button id="respawn-btn-top" class="hud-btn" title="Вернуться на чекпоинт (R)">
-          <span class="btn-label">🔄 Респаун</span>
+        <button id="respawn-btn-top" class="hud-btn" data-i18n-title="respawnTitle" title="Вернуться на чекпоинт (R)">
+          <span class="btn-label" data-i18n="respawn">🔄 Респаун</span>
           <span class="btn-short">🔄</span>
         </button>
       </div>
@@ -62,11 +66,9 @@
     <div id="rotate-device-hint" class="rotate-device-hint">
       <div class="rotate-content">
         <span class="rotate-icon">🔄</span>
-        <span>Поверните экран в альбомный режим</span>
+        <span data-i18n="rotateHint">Поверните экран в альбомный режим</span>
       </div>
     </div>
-
-
 
     <!-- Mobile Virtual Controls -->
     <div id="mobile-controls">
@@ -77,8 +79,8 @@
 
       <!-- Action Buttons -->
       <div class="mobile-action-buttons">
-        <button id="m-respawn-btn" class="action-btn respawn-btn" title="Респаун">🔄</button>
-        <button id="m-jump-btn" class="action-btn jump-btn" title="Прыжок">⬆️</button>
+        <button id="m-respawn-btn" class="action-btn respawn-btn" data-i18n-title="respawnTitle" title="Респаун">🔄</button>
+        <button id="m-jump-btn" class="action-btn jump-btn" data-i18n-title="jumpTitle" title="Прыжок">⬆️</button>
       </div>
     </div>
   </div>
@@ -86,32 +88,32 @@
   <!-- Victory Modal -->
   <div id="victory-modal" class="modal-overlay">
     <div class="modal-card">
-      <h2>🏆 ПОБЕДА! 🏆</h2>
-      <p>Ты покорил все 20 этажей великой Башни Обби!</p>
+      <h2 data-i18n="victoryTitle">🏆 ПОБЕДА! 🏆</h2>
+      <p data-i18n="victoryDesc">Ты покорил все 20 этажей великой Башни Обби!</p>
       
       <div class="stat-grid">
         <div class="stat-item">
-          <div class="stat-label">Твое Время</div>
+          <div class="stat-label" data-i18n="statTime">Твое Время</div>
           <div class="stat-value" id="final-time">00:00.0</div>
         </div>
         <div class="stat-item">
-          <div class="stat-label">Собрано Монет</div>
+          <div class="stat-label" data-i18n="statCoins">Собрано Монет</div>
           <div class="stat-value" id="final-coins">0 / 40</div>
         </div>
         <div class="stat-item">
-          <div class="stat-label">Падений / Смертей</div>
+          <div class="stat-label" data-i18n="statDeaths">Падений / Смертей</div>
           <div class="stat-value" id="final-deaths">0</div>
         </div>
         <div class="stat-item">
-          <div class="stat-label">Лучший Рекорд</div>
+          <div class="stat-label" data-i18n="statBest">Лучший Рекорд</div>
           <div class="stat-value" id="best-time">--:--.-</div>
         </div>
       </div>
 
       <div class="modal-actions">
-        <button id="double-coins-btn" class="btn-rewarded">🎁 Удвоить Монеты (x2) (+📺)</button>
-        <button id="victory-leaderboard-btn" class="btn-secondary">🏆 Таблица Лидеров</button>
-        <button id="restart-game-btn" class="btn-primary">Сыграть Снова 🚀</button>
+        <button id="double-coins-btn" class="btn-rewarded" data-i18n="doubleCoinsBtn">🎁 Удвоить Монеты (x2) (+📺)</button>
+        <button id="victory-leaderboard-btn" class="btn-secondary" data-i18n="victoryLeaderboardBtn">🏆 Таблица Лидеров</button>
+        <button id="restart-game-btn" class="btn-primary" data-i18n="restartBtn">Сыграть Снова 🚀</button>
       </div>
     </div>
   </div>
@@ -120,8 +122,8 @@
   <div id="leaderboard-modal" class="modal-overlay">
     <div class="modal-card leaderboard-card">
       <div class="modal-header-row">
-        <h2>🏆 Таблица Лидеров</h2>
-        <button id="close-leaderboard-x" class="modal-close-btn" title="Закрыть">✕</button>
+        <h2 data-i18n="lbTitle">🏆 Таблица Лидеров</h2>
+        <button id="close-leaderboard-x" class="modal-close-btn" data-i18n-title="lbCloseTitle" title="Закрыть">✕</button>
       </div>
 
       <div id="leaderboard-content" class="leaderboard-scroll-area">
@@ -129,20 +131,21 @@
       </div>
 
       <div class="my-record-box">
-        <span class="my-record-title">Ваш рекорд времени:</span>
+        <span class="my-record-title" data-i18n="lbMyRecord">Ваш рекорд времени:</span>
         <span class="my-record-val" id="my-record-time">--:--.-</span>
       </div>
 
-      <button id="close-leaderboard-btn" class="btn-primary">Закрыть</button>
+      <button id="close-leaderboard-btn" class="btn-primary" data-i18n="lbCloseBtn">Закрыть</button>
     </div>
   </div>
 
   <!-- Modular Game Architecture -->
-  <script src="constants.js?v=4.2"></script>
-  <script src="sound.js?v=4.2"></script>
-  <script src="bridge.js?v=4.2"></script>
-  <script src="character.js?v=4.2"></script>
-  <script src="tower.js?v=4.2"></script>
-  <script src="game.js?v=4.2"></script>
+  <script src="constants.js?v=4.3"></script>
+  <script src="i18n.js?v=4.3"></script>
+  <script src="sound.js?v=4.3"></script>
+  <script src="bridge.js?v=4.3"></script>
+  <script src="character.js?v=4.3"></script>
+  <script src="tower.js?v=4.3"></script>
+  <script src="game.js?v=4.3"></script>
 </body>
 </html>

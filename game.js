@@ -218,7 +218,8 @@
       this.timerRunning = true;
 
       // Reset HUD
-      if (this.floorDisplay) this.floorDisplay.textContent = `ЭТАЖ 1 / ${this.maxFloor}`;
+      const floorWord = window.I18N ? window.I18N.t('floor') : 'ЭТАЖ';
+      if (this.floorDisplay) this.floorDisplay.textContent = `${floorWord} 1 / ${this.maxFloor}`;
       if (this.coinsDisplay) this.coinsDisplay.textContent = '0';
       if (this.timerDisplay) this.timerDisplay.textContent = '00:00.0';
 
@@ -233,7 +234,7 @@
       const doubleBtn = document.getElementById('double-coins-btn');
       if (doubleBtn) {
         doubleBtn.disabled = false;
-        doubleBtn.textContent = '🎁 Удвоить Монеты (x2) (+📺)';
+        doubleBtn.textContent = window.I18N ? window.I18N.t('doubleCoinsBtn') : '🎁 Удвоить Монеты (x2) (+📺)';
       }
 
       // Reset world coins
@@ -254,10 +255,12 @@
     // --- PROGRESSION & CHECKPOINTS ---
     advanceFloor(floorNum, isSkipped = false) {
       this.currentFloor = floorNum;
-      this.floorDisplay.textContent = `ЭТАЖ ${floorNum} / ${this.maxFloor}`;
+      const floorWord = window.I18N ? window.I18N.t('floor') : 'ЭТАЖ';
+      this.floorDisplay.textContent = `${floorWord} ${floorNum} / ${this.maxFloor}`;
 
-      // Toast notification
-      this.floorToast.textContent = `ЭТАЖ ${floorNum}`;
+      // Toast notification with stage name
+      const stageName = window.I18N ? window.I18N.getFloorName(floorNum) : '';
+      this.floorToast.textContent = `${floorWord} ${floorNum}: ${stageName}`;
       this.floorToast.classList.add('show');
       setTimeout(() => this.floorToast.classList.remove('show'), 2200);
 
@@ -589,10 +592,14 @@
 
       const updateFsBtnState = () => {
         const isFs = this.isFullscreen();
-        const icon = document.querySelector('#fullscreen-btn .btn-icon');
-        const text = document.querySelector('#fullscreen-btn .btn-label');
+        const icon = document.querySelector('#fullscreen-btn .btn-icon, #fullscreen-icon');
+        const text = document.querySelector('#fullscreen-btn .btn-label, #fullscreen-text');
         if (icon) icon.textContent = isFs ? '🗗' : '⛶';
-        if (text) text.textContent = isFs ? 'Окно' : 'Экран';
+        if (text) {
+          text.textContent = isFs
+            ? (window.I18N ? window.I18N.t('fullscreenWindow') : 'Окно')
+            : (window.I18N ? window.I18N.t('fullscreenFull') : 'Экран');
+        }
 
         if (isFs) {
           this.lockLandscape();
@@ -629,7 +636,7 @@
             const finalCoinsEl = document.getElementById('final-coins');
             if (finalCoinsEl) finalCoinsEl.textContent = `${this.coins} (x2!)`;
             doubleBtn.disabled = true;
-            doubleBtn.textContent = '✅ Монеты удвоены!';
+            doubleBtn.textContent = window.I18N ? window.I18N.t('doubleCoinsDone') : '✅ Монеты удвоены!';
             this.bridge.saveProgress(this.bestTime, this.coins);
           });
         });
@@ -642,6 +649,24 @@
           this.sound.ensureContext();
           this.resetGame();
         });
+      }
+
+      // Language Switcher button
+      const langBtn = document.getElementById('lang-btn');
+      if (langBtn) {
+        const handleLangToggle = (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          this.sound.ensureContext();
+          if (window.I18N) {
+            window.I18N.toggleLanguage();
+            this.sound.playCoin();
+          }
+        };
+        langBtn.addEventListener('click', handleLangToggle);
+        langBtn.addEventListener('touchend', handleLangToggle);
       }
 
       // Leaderboard buttons & modal
@@ -685,6 +710,12 @@
             this.closeLeaderboard();
           }
         });
+      }
+
+      // Language reactivity
+      if (window.I18N) {
+        window.I18N.onLanguageChange(() => this.updateLanguageUI());
+        this.updateLanguageUI();
       }
     }
 
@@ -823,7 +854,7 @@
       if (!content) return;
 
       if (type === 'in_game') {
-        content.innerHTML = '<div class="lb-loading-state">⏳ Загрузка таблицы лидеров платформы...</div>';
+        content.innerHTML = `<div class="lb-loading-state">${window.I18N ? window.I18N.t('lbLoading') : '⏳ Loading...'}</div>`;
         try {
           const res = await this.bridge.showLeaderboard();
           let list = [];
@@ -833,13 +864,18 @@
           }
 
           if (list.length > 0) {
+            const rankCol = window.I18N ? window.I18N.t('lbRankCol') : '#';
+            const playerCol = window.I18N ? window.I18N.t('lbPlayerCol') : 'Player';
+            const timeCol = window.I18N ? window.I18N.t('lbTimeCol') : 'Time';
+            const defaultPlayer = window.I18N ? window.I18N.t('defaultPlayerName') : 'Player';
+
             let html = `
               <table class="leaderboard-table">
                 <thead>
                   <tr>
-                    <th>#</th>
-                    <th>Игрок</th>
-                    <th style="text-align:right">Время</th>
+                    <th>${rankCol}</th>
+                    <th>${playerCol}</th>
+                    <th style="text-align:right">${timeCol}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -852,7 +888,7 @@
               else if (rank === 2) { rankClass = 'lb-silver'; medal = '🥈 2'; }
               else if (rank === 3) { rankClass = 'lb-bronze'; medal = '🥉 3'; }
 
-              const name = entry.name || (entry.player && (entry.player.name || entry.player.publicName)) || `Игрок #${rank}`;
+              const name = entry.name || (entry.player && (entry.player.name || entry.player.publicName)) || `${defaultPlayer} #${rank}`;
               const photo = entry.photo || (entry.player && (entry.player.avatar || (Array.isArray(entry.player.photos) && entry.player.photos[0]))) || '';
               const scoreSec = typeof entry.score === 'number' ? entry.score / 100 : null;
               const formattedScore = scoreSec !== null ? this.formatTime(scoreSec) : (entry.formattedScore || '--:--.-');
@@ -873,34 +909,39 @@
             html += '</tbody></table>';
             content.innerHTML = html;
           } else {
+            const emptyTitle = window.I18N ? window.I18N.t('lbEmptyTitle') : 'Таблица Лидеров';
+            const emptyDesc = window.I18N ? window.I18N.t('lbEmptyDesc') : 'Вы пока первый претендент на рекорд!';
             content.innerHTML = `
               <div class="lb-platform-info">
                 <div class="lb-icon">🏁</div>
-                <h3>Таблица Лидеров</h3>
-                <p>Вы пока первый претендент на рекорд! Покорите вершину Башни, чтобы зафиксировать своё лучшее время.</p>
+                <h3>${emptyTitle}</h3>
+                <p>${emptyDesc}</p>
               </div>
             `;
           }
         } catch (err) {
+          const errTitle = window.I18N ? window.I18N.t('lbErrorTitle') : 'Ошибка загрузки';
+          const errDesc = window.I18N ? window.I18N.t('lbErrorDesc') : 'Не удалось получить данные с сервера.';
           content.innerHTML = `
             <div class="lb-platform-info">
               <div class="lb-icon">⚠️</div>
-              <h3>Ошибка загрузки</h3>
-              <p>Не удалось получить данные с сервера лидеров платформы. Попробуйте снова чуть позже.</p>
+              <h3>${errTitle}</h3>
+              <p>${errDesc}</p>
             </div>
           `;
         }
       } else {
         // 'not_available' (GitHub Pages or standalone browser)
+        const platTitle = window.I18N ? window.I18N.t('lbPlatformTitle') : 'Платформенная Таблица Лидеров';
+        const platDesc = window.I18N ? window.I18N.t('lbPlatformDesc') : 'Официальный рейтинг синхронизируется через Playgama Bridge.';
+        const platBadge = window.I18N ? window.I18N.t('lbPlatformBadge') : '✓ Интеграция API Playgama v2.4.0 подключена';
         content.innerHTML = `
           <div class="lb-platform-info">
             <div class="lb-icon">🏆</div>
-            <h3>Платформенная Таблица Лидеров</h3>
-            <p>
-              Официальный рейтинг и соревнование с другими игроками синхронизируются через <strong>Playgama Bridge</strong> на платформах <strong>Яндекс Игры</strong> и <strong>VK Play</strong>.
-            </p>
+            <h3>${platTitle}</h3>
+            <p>${platDesc}</p>
             <div class="lb-status-badge">
-              ✓ Интеграция API Playgama v2.4.0 подключена
+              ${platBadge}
             </div>
           </div>
         `;
@@ -910,6 +951,41 @@
     closeLeaderboard() {
       const modal = document.getElementById('leaderboard-modal');
       if (modal) modal.classList.remove('active');
+    }
+
+    updateLanguageUI() {
+      if (!window.I18N) return;
+      window.I18N.applyToDOM();
+
+      const floorWord = window.I18N.t('floor');
+      if (this.floorDisplay) {
+        this.floorDisplay.textContent = `${floorWord} ${this.currentFloor} / ${this.maxFloor}`;
+      }
+
+      const isFs = this.isFullscreen();
+      const fsText = document.querySelector('#fullscreen-btn .btn-label, #fullscreen-text');
+      if (fsText) {
+        fsText.textContent = isFs ? window.I18N.t('fullscreenWindow') : window.I18N.t('fullscreenFull');
+      }
+
+      const doubleBtn = document.getElementById('double-coins-btn');
+      if (doubleBtn) {
+        if (doubleBtn.disabled) {
+          doubleBtn.textContent = window.I18N.t('doubleCoinsDone');
+        } else {
+          doubleBtn.textContent = window.I18N.t('doubleCoinsBtn');
+        }
+      }
+
+      const myRecordEl = document.getElementById('my-record-time');
+      if (myRecordEl) {
+        myRecordEl.textContent = this.formatTime(this.bestTime);
+      }
+
+      const lbModal = document.getElementById('leaderboard-modal');
+      if (lbModal && lbModal.classList.contains('active')) {
+        this.openLeaderboard();
+      }
     }
 
     // --- PHYSICS ENGINE & SUBSTEPPING (No Tunneling) ---

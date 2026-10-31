@@ -96,6 +96,17 @@
 
           // Fetch cloud storage data and sync
           await this.loadCloudProgress();
+
+          // Sync platform language if user hasn't explicitly chosen one
+          try {
+            if (window.bridge && window.bridge.platform && window.bridge.platform.language) {
+              const pLang = String(window.bridge.platform.language).toLowerCase().slice(0, 2);
+              const targetLang = ['ru', 'be', 'uk', 'kk'].includes(pLang) ? 'ru' : 'en';
+              if (typeof localStorage !== 'undefined' && !localStorage.getItem('tower_lang') && window.I18N) {
+                window.I18N.setLanguage(targetLang);
+              }
+            }
+          } catch (e) {}
         } catch (e) {
           console.warn('[Playgama Bridge] Init failed, operating in standalone mode', e);
         }
