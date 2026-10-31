@@ -48,36 +48,41 @@
       this.scene.add(abyss);
       this.addHazard(new THREE.Vector3(0, -1, 0), new THREE.Vector3(60, 1.5, 60));
 
-      // 20 Floor Theme Definitions
+      // 20 Floor Theme Definitions (Strictly Ascending Difficulty Progression)
       const floorThemes = [
-        // Tier 1: Fundamentals (Floors 1-4)
+        // --- Tier 1: Основы и адаптация (Этажи 1–4) ---
+        // Никаких смертей на самих платформах: изучение дистанции, прыжков и камеры
         { name: 'Первые шаги', color: 0x22c55e, type: 'basic' },
-        { name: 'Парящие диски', color: 0x059669, type: 'discs' },
-        { name: 'Лавовые полосы', color: 0xeab308, type: 'lava' },
-        { name: 'Лавовый крест', color: 0xf59e0b, type: 'lava_cross' },
+        { name: 'Парящие диски', color: 0x10b981, type: 'discs' },
+        { name: 'Узкие тропы', color: 0x06b6d4, type: 'narrow_beam' },
+        { name: 'Прыжковые батуты', color: 0x3b82f6, type: 'bouncers' },
 
-        // Tier 2: Precision & Ice (Floors 5-8)
+        // --- Tier 2: Точность и подвижные элементы (Этажи 5–8) ---
+        // Меньшая площадь приземления и плавное движение в воздухе
+        { name: 'Микро-столбики', color: 0x6366f1, type: 'micro_columns' },
+        { name: 'Супер-батуты', color: 0x8b5cf6, type: 'high_bouncers' },
+        { name: 'Живые платформы', color: 0xa855f7, type: 'moving' },
+        { name: 'Встречный дрифт', color: 0xd946ef, type: 'fast_moving' },
+
+        // --- Tier 3: Инерция и скорость реакции (Этажи 9–12) ---
+        // Скольжение, таймер исчезновения и первое появление лавы
+        { name: 'Ледяные дорожки', color: 0x38bdf8, type: 'ice' },
         { name: 'Хрупкий мост', color: 0xf97316, type: 'vanishing' },
         { name: 'Быстрый распад', color: 0xe11d48, type: 'fast_vanishing' },
-        { name: 'Ледяные дорожки', color: 0x38bdf8, type: 'ice' },
+        { name: 'Лавовые полосы', color: 0xeab308, type: 'lava' },
+
+        // --- Tier 4: Опасная среда и барьеры (Этажи 13–16) ---
+        // Сложная геометрия лавы и прыжки через лазерные ограды
+        { name: 'Лавовый крест', color: 0xf59e0b, type: 'lava_cross' },
         { name: 'Лед и лава', color: 0x0284c7, type: 'ice_lava' },
-
-        // Tier 3: Springs & Movement (Floors 9-12)
-        { name: 'Прыжковые батуты', color: 0xa855f7, type: 'bouncers' },
-        { name: 'Супер-батуты', color: 0x9333ea, type: 'high_bouncers' },
-        { name: 'Живые платформы', color: 0x06b6d4, type: 'moving' },
-        { name: 'Встречный дрифт', color: 0x0891b2, type: 'fast_moving' },
-
-        // Tier 4: Balance & Lasers (Floors 13-16)
-        { name: 'Узкие тропы', color: 0x6366f1, type: 'narrow_beam' },
-        { name: 'Микро-столбики', color: 0x4f46e5, type: 'micro_columns' },
         { name: 'Лазерные барьеры', color: 0xec4899, type: 'lasers' },
         { name: 'Бегущие лазеры', color: 0xdb2777, type: 'fast_lasers' },
 
-        // Tier 5: The Master Run (Floors 17-20)
+        // --- Tier 5: Экстремальный хардкор и финал (Этажи 17–20) ---
+        // Вращающиеся балки и комбинации ловушек
         { name: 'Вращающийся луч', color: 0xef4444, type: 'spinner' },
         { name: 'Двойные спиннеры', color: 0xdc2626, type: 'fast_spinner' },
-        { name: 'Хрупкие лучи', color: 0xb91c1c, type: 'vanishing_spinner' },
+        { name: 'Хрупкие лучи', color: 0x991b1b, type: 'vanishing_spinner' },
         { name: 'Корона Башни', color: 0xfacc15, type: 'summit_rush' }
       ];
 
